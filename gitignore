@@ -1,0 +1,95 @@
+# PianoMode Sight Reading - .gitignore
+
+# WordPress core files
+/wp-admin/
+/wp-includes/
+/wp-content/index.php
+/wp-content/plugins/
+/wp-content/themes/
+!/wp-content/themes/blocksy-child/
+
+# WordPress config
+wp-config.php
+wp-config-local.php
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+build/
+*.min.js
+*.min.css
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.project
+.settings/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Cache
+.cache/
+.sass-cache/
+
+# Backups
+*.bak
+*.backup
+
+# Audio samples (trop lourds pour Git, utiliser Git LFS ou CDN)
+*.mp3
+*.wav
+*.ogg
+!docs/**/*.mp3
+
+# Documentation builds
+docs/_build/
+
+# Package lock (choisir npm OU yarn, pas les deux)
+# Décommenter celui que tu n'utilises pas:
+# package-lock.json
+# yarn.lock
+
+# WordPress uploads (trop lourd)
+/wp-content/uploads/
+
+# Database
+*.sql
+*.sqlite
+
+# Composer
+/vendor/
+
+# Keep important directories
+!blocksy-child/assets/Sightreading-game/.gitkeep
+!docs/sightreading/.gitkeep
