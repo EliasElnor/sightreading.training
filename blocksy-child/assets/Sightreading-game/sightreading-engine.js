@@ -380,9 +380,222 @@
         }
     }
 
+    /**
+     * Virtual Piano Class - 88 Keys (Phase 1.3)
+     */
+    class VirtualPiano {
+        constructor(container) {
+            this.container = container;
+            this.keys = new Map();
+            this.activeKeys = new Set();
+
+            // Piano configuration
+            this.totalKeys = 88;
+            this.startMidi = 21; // A0
+            this.endMidi = 108;  // C8
+
+            // Note names mapping
+            this.noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            this.noteNamesLatin = ['Do', 'Do#', 'Ré', 'Ré#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'];
+
+            console.log('🎹 VirtualPiano initialized');
+        }
+
+        /**
+         * Generate all 88 piano keys
+         */
+        generateKeys() {
+            const keyboard = this.container;
+            if (!keyboard) {
+                console.error('Piano keyboard container not found');
+                return;
+            }
+
+            keyboard.innerHTML = '';
+
+            // Generate keys from A0 (MIDI 21) to C8 (MIDI 108)
+            for (let midi = this.startMidi; midi <= this.endMidi; midi++) {
+                const key = this.createKey(midi);
+                if (key) {
+                    keyboard.appendChild(key);
+                }
+            }
+
+            console.log(`✓ Generated ${this.totalKeys} piano keys`);
+        }
+
+        /**
+         * Create a single piano key
+         */
+        createKey(midi) {
+            const note = this.midiToNote(midi);
+            const isBlack = note.includes('#');
+
+            const key = document.createElement('div');
+            key.className = `srt-piano-key ${isBlack ? 'black' : 'white'}`;
+            key.dataset.midi = midi;
+            key.dataset.note = note;
+
+            // Add labels to white keys (only show on C notes)
+            if (!isBlack && note.startsWith('C')) {
+                const label = document.createElement('div');
+                label.className = 'srt-key-label';
+
+                const noteName = document.createElement('span');
+                noteName.className = 'srt-label-note';
+                noteName.textContent = note;
+
+                label.appendChild(noteName);
+                key.appendChild(label);
+            }
+
+            // Add event listeners
+            this.addKeyListeners(key, midi);
+
+            // Store key reference
+            this.keys.set(midi, key);
+
+            return key;
+        }
+
+        /**
+         * Add event listeners to a key
+         */
+        addKeyListeners(key, midi) {
+            // Mouse down
+            key.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                this.keyPress(midi);
+            });
+
+            // Mouse up
+            key.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                this.keyRelease(midi);
+            });
+
+            // Mouse enter (for dragging)
+            key.addEventListener('mouseenter', (e) => {
+                if (e.buttons === 1) {
+                    this.keyPress(midi);
+                }
+            });
+
+            // Mouse leave
+            key.addEventListener('mouseleave', () => {
+                this.keyRelease(midi);
+            });
+
+            // Touch support
+            key.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.keyPress(midi);
+            });
+
+            key.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.keyRelease(midi);
+            });
+        }
+
+        /**
+         * Handle key press
+         */
+        keyPress(midi) {
+            const key = this.keys.get(midi);
+            if (!key) return;
+
+            // Add active class for visual feedback
+            key.classList.add('active');
+            this.activeKeys.add(midi);
+
+            // Play sound (will be implemented in Phase 1.4)
+            console.log(`Key pressed: MIDI ${midi} (${this.midiToNote(midi)})`);
+
+            // Emit event for game engine
+            $(document).trigger('pianoKeyPressed', { midi: midi, note: this.midiToNote(midi) });
+        }
+
+        /**
+         * Handle key release
+         */
+        keyRelease(midi) {
+            const key = this.keys.get(midi);
+            if (!key) return;
+
+            // Remove active class
+            key.classList.remove('active');
+            this.activeKeys.delete(midi);
+
+            console.log(`Key released: MIDI ${midi}`);
+
+            // Emit event for game engine
+            $(document).trigger('pianoKeyReleased', { midi: midi, note: this.midiToNote(midi) });
+        }
+
+        /**
+         * Convert MIDI number to note name with octave
+         */
+        midiToNote(midi) {
+            const octave = Math.floor((midi - 12) / 12);
+            const noteIndex = (midi - 12) % 12;
+            return this.noteNames[noteIndex] + octave;
+        }
+
+        /**
+         * Convert note name to MIDI number
+         */
+        noteToMidi(note) {
+            // Parse note (e.g., "C4", "F#5")
+            const match = note.match(/^([A-G]#?)(\d+)$/);
+            if (!match) return null;
+
+            const noteName = match[1];
+            const octave = parseInt(match[2]);
+
+            const noteIndex = this.noteNames.indexOf(noteName);
+            if (noteIndex === -1) return null;
+
+            return (octave + 1) * 12 + noteIndex;
+        }
+
+        /**
+         * Highlight a key (for correct note feedback)
+         */
+        highlightKey(midi) {
+            const key = this.keys.get(midi);
+            if (!key) return;
+
+            key.classList.add('correct');
+            setTimeout(() => {
+                key.classList.remove('correct');
+            }, 500);
+        }
+
+        /**
+         * Show error on a key
+         */
+        showError(midi) {
+            const key = this.keys.get(midi);
+            if (!key) return;
+
+            key.classList.add('error');
+            setTimeout(() => {
+                key.classList.remove('error');
+            }, 500);
+        }
+    }
+
     // Initialize the engine when DOM is ready
     $(document).ready(function() {
         window.sightReadingEngine = new SightReadingEngine();
+
+        // Initialize piano (Phase 1.3)
+        const pianoContainer = document.getElementById('srtPianoKeyboard');
+        if (pianoContainer) {
+            window.virtualPiano = new VirtualPiano(pianoContainer);
+            window.virtualPiano.generateKeys();
+        }
     });
 
 })(jQuery);
