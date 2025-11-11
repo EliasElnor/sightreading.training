@@ -1,0 +1,1829 @@
+<?php
+/**
+ * PianoMode Sight Reading Game - WordPress Integration
+ * File: /blocksy-child/assets/Sightreading-game/sightreading-main.php
+ * Version: 15.0.0 - Professional Complete Implementation
+ * 
+ * @package PianoModeSightReading
+ * @author PianoMode Development Team
+ * @license GPL-2.0+
+ * 
+ * Complete sight reading application integrated into WordPress
+ * Based on sightreading.training model with PianoMode design
+ */
+
+// Security check
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class PianoMode_SightReading_Game {
+    
+    private $version = '15.0.0';
+    private $assets_loaded = false;
+    
+    // PianoMode color palette
+    private $colors = array(
+        'gold' => '#C59D3A',
+        'gold_light' => '#D4A942', 
+        'gold_dark' => '#B08A2E',
+        'black' => '#0B0B0B',
+        'white' => '#FFFFFF',
+        'success' => '#4CAF50',
+        'error' => '#F44336'
+    );
+    
+    // Notation systems for note names
+    private $notation_systems = array(
+        'international' => array(
+            'C' => 'C', 'C#' => 'C#', 'Db' => 'Db', 'D' => 'D', 'D#' => 'D#', 'Eb' => 'Eb',
+            'E' => 'E', 'F' => 'F', 'F#' => 'F#', 'Gb' => 'Gb', 'G' => 'G', 'G#' => 'G#',
+            'Ab' => 'Ab', 'A' => 'A', 'A#' => 'A#', 'Bb' => 'Bb', 'B' => 'B'
+        ),
+        'latin' => array(
+            'C' => 'Do', 'C#' => 'Do#', 'Db' => 'Réb', 'D' => 'Ré', 'D#' => 'Ré#', 'Eb' => 'Mib',
+            'E' => 'Mi', 'F' => 'Fa', 'F#' => 'Fa#', 'Gb' => 'Solb', 'G' => 'Sol', 'G#' => 'Sol#',
+            'Ab' => 'Lab', 'A' => 'La', 'A#' => 'La#', 'Bb' => 'Sib', 'B' => 'Si'
+        ),
+        'german' => array(
+            'C' => 'C', 'C#' => 'Cis', 'Db' => 'Des', 'D' => 'D', 'D#' => 'Dis', 'Eb' => 'Es',
+            'E' => 'E', 'F' => 'F', 'F#' => 'Fis', 'Gb' => 'Ges', 'G' => 'G', 'G#' => 'Gis',
+            'Ab' => 'As', 'A' => 'A', 'A#' => 'Ais', 'Bb' => 'B', 'B' => 'H'
+        )
+    );
+    
+    // Game difficulty levels
+    private $difficulty_levels = array(
+        'beginner' => array(
+            'name' => 'Beginner',
+            'description' => 'Single notes, C position',
+            'range' => array('C3', 'G4'),
+            'notes_count' => 1,
+            'use_accidentals' => false,
+            'tempo_range' => array(40, 80),
+            'key_signatures' => array('C'),
+            'time_signatures' => array('4/4'),
+            'note_types' => array('whole', 'half', 'quarter')
+        ),
+        'elementary' => array(
+            'name' => 'Elementary',
+            'description' => 'Extended range, simple rhythms',
+            'range' => array('A2', 'C5'),
+            'notes_count' => 1,
+            'use_accidentals' => false,
+            'tempo_range' => array(50, 100),
+            'key_signatures' => array('C', 'G', 'F'),
+            'time_signatures' => array('4/4', '3/4'),
+            'note_types' => array('whole', 'half', 'quarter', 'eighth')
+        ),
+        'intermediate' => array(
+            'name' => 'Intermediate',
+            'description' => 'Two hands, accidentals, chords',
+            'range' => array('C2', 'C6'),
+            'notes_count' => 2,
+            'use_accidentals' => true,
+            'tempo_range' => array(60, 120),
+            'key_signatures' => array('C', 'G', 'D', 'A', 'F', 'Bb', 'Eb'),
+            'time_signatures' => array('4/4', '3/4', '6/8', '2/4'),
+            'note_types' => array('whole', 'half', 'quarter', 'eighth', 'sixteenth', 'dotted')
+        ),
+        'advanced' => array(
+            'name' => 'Advanced',
+            'description' => 'Complex chords, all keys',
+            'range' => array('A0', 'C8'),
+            'notes_count' => 4,
+            'use_accidentals' => true,
+            'tempo_range' => array(40, 180),
+            'key_signatures' => array('all'),
+            'time_signatures' => array('4/4', '3/4', '6/8', '2/4', '5/4', '7/8'),
+            'note_types' => array('all')
+        ),
+        'expert' => array(
+            'name' => 'Expert',
+            'description' => 'Professional level sight reading',
+            'range' => array('A0', 'C8'),
+            'notes_count' => 6,
+            'use_accidentals' => true,
+            'tempo_range' => array(20, 200),
+            'key_signatures' => array('all'),
+            'time_signatures' => array('all'),
+            'note_types' => array('all'),
+            'include_ornaments' => true,
+            'include_dynamics' => true
+        )
+    );
+    
+    // Chord progressions for intermediate+
+    private $chord_progressions = array(
+        'basic' => array(
+            array('I', 'IV', 'V', 'I'),
+            array('I', 'vi', 'IV', 'V'),
+            array('I', 'V', 'vi', 'IV'),
+            array('ii', 'V', 'I')
+        ),
+        'jazz' => array(
+            array('IMA7', 'ii7', 'V7', 'IMA7'),
+            array('IMA7', 'VI7', 'ii7', 'V7'),
+            array('ii7', 'V7', 'IMA7', 'VI7'),
+            array('IMA7', 'I7', 'IV', 'iv'),
+            array('iii7', 'VI7', 'ii7', 'V7')
+        ),
+        'pop' => array(
+            array('I', 'V', 'vi', 'IV'),
+            array('vi', 'IV', 'I', 'V'),
+            array('I', 'vi', 'ii', 'V'),
+            array('IV', 'I', 'V', 'vi')
+        )
+    );
+    
+    // Scale patterns for generation
+    private $scale_patterns = array(
+        'major' => array(0, 2, 4, 5, 7, 9, 11),
+        'natural_minor' => array(0, 2, 3, 5, 7, 8, 10),
+        'harmonic_minor' => array(0, 2, 3, 5, 7, 8, 11),
+        'melodic_minor' => array(0, 2, 3, 5, 7, 9, 11),
+        'dorian' => array(0, 2, 3, 5, 7, 9, 10),
+        'phrygian' => array(0, 1, 3, 5, 7, 8, 10),
+        'lydian' => array(0, 2, 4, 6, 7, 9, 11),
+        'mixolydian' => array(0, 2, 4, 5, 7, 9, 10),
+        'locrian' => array(0, 1, 3, 5, 6, 8, 10),
+        'blues' => array(0, 3, 5, 6, 7, 10),
+        'pentatonic_major' => array(0, 2, 4, 7, 9),
+        'pentatonic_minor' => array(0, 3, 5, 7, 10),
+        'chromatic' => array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+    );
+    
+    // Achievement system
+    private $achievements = array(
+        'first_note' => array(
+            'name' => 'First Note',
+            'description' => 'Play your first correct note',
+            'icon' => '🎵',
+            'xp' => 10
+        ),
+        'perfect_10' => array(
+            'name' => 'Perfect 10',
+            'description' => 'Get 10 notes correct in a row',
+            'icon' => '⭐',
+            'xp' => 50
+        ),
+        'speed_demon' => array(
+            'name' => 'Speed Demon',
+            'description' => 'Complete a session at 150+ BPM',
+            'icon' => '⚡',
+            'xp' => 100
+        ),
+        'accuracy_master' => array(
+            'name' => 'Accuracy Master',
+            'description' => 'Achieve 95% accuracy in a session',
+            'icon' => '🎯',
+            'xp' => 75
+        ),
+        'chord_champion' => array(
+            'name' => 'Chord Champion',
+            'description' => 'Play 50 chords correctly',
+            'icon' => '🎹',
+            'xp' => 150
+        ),
+        'daily_practice' => array(
+            'name' => 'Daily Practice',
+            'description' => 'Practice for 7 days in a row',
+            'icon' => '📅',
+            'xp' => 200
+        ),
+        'sight_reading_pro' => array(
+            'name' => 'Sight Reading Pro',
+            'description' => 'Complete 100 exercises',
+            'icon' => '👁️',
+            'xp' => 500
+        )
+    );
+    
+    // Constructor
+    public function __construct() {
+        $this->init_hooks();
+    }
+    
+    // Initialize WordPress hooks
+    private function init_hooks() {
+        // Register shortcode
+        add_shortcode('sight_reading', array($this, 'render_shortcode'));
+        
+        // Register AJAX handlers
+        add_action('wp_ajax_srt_save_progress', array($this, 'ajax_save_progress'));
+        add_action('wp_ajax_srt_get_stats', array($this, 'ajax_get_stats'));
+        add_action('wp_ajax_srt_unlock_achievement', array($this, 'ajax_unlock_achievement'));
+        add_action('wp_ajax_srt_update_settings', array($this, 'ajax_update_settings'));
+        add_action('wp_ajax_srt_generate_exercise', array($this, 'ajax_generate_exercise'));
+        add_action('wp_ajax_srt_upload_sound', array($this, 'ajax_upload_sound'));
+        
+        // Register assets
+        add_action('wp_enqueue_scripts', array($this, 'register_assets'));
+        
+        // Add rewrite rules for fullscreen mode
+        add_action('init', array($this, 'add_rewrite_rules'));
+        
+        // Add admin menu
+        add_action('admin_menu', array($this, 'add_admin_menu'));
+        
+        // Database setup
+        register_activation_hook(__FILE__, array($this, 'create_database_tables'));
+    }
+    
+    // Register and enqueue assets
+    public function register_assets() {
+        if (!$this->assets_loaded) {
+            // CSS
+            wp_register_style(
+                'sightreading-css',
+                get_stylesheet_directory_uri() . '/assets/Sightreading-game/sightreading.css',
+                array(),
+                $this->version
+            );
+            
+            // JavaScript
+            wp_register_script(
+                'sightreading-engine',
+                get_stylesheet_directory_uri() . '/assets/Sightreading-game/sightreading-engine.js',
+                array('jquery'),
+                $this->version,
+                true
+            );
+            
+            // Localize script
+            wp_localize_script('sightreading-engine', 'srtConfig', array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('srt_nonce'),
+                'userId' => get_current_user_id(),
+                'isLoggedIn' => is_user_logged_in(),
+                'siteUrl' => site_url(),
+                'assetsUrl' => get_stylesheet_directory_uri() . '/assets/Sightreading-game/',
+                'colors' => $this->colors,
+                'difficulties' => $this->difficulty_levels,
+                'achievements' => $this->achievements,
+                'notationSystems' => $this->notation_systems,
+                'scalePatterns' => $this->scale_patterns,
+                'chordProgressions' => $this->chord_progressions,
+                'userSettings' => $this->get_user_settings(),
+                'userStats' => $this->get_user_stats(),
+                'translations' => $this->get_translations()
+            ));
+            
+            $this->assets_loaded = true;
+        }
+    }
+    
+    // Main shortcode render function
+    public function render_shortcode($atts) {
+        // Parse attributes
+        $atts = shortcode_atts(array(
+            'mode' => 'practice',
+            'difficulty' => 'beginner',
+            'show_piano' => 'true',
+            'show_stats' => 'true',
+            'fullscreen' => 'false',
+            'theme' => 'pianomode'
+        ), $atts);
+        
+        // Enqueue assets
+        wp_enqueue_style('sightreading-css');
+        wp_enqueue_script('sightreading-engine');
+        
+        // Start output buffering
+        ob_start();
+        
+        // Render the game interface
+        $this->render_game_interface($atts);
+        
+        return ob_get_clean();
+    }
+    
+    // Render the main game interface
+    private function render_game_interface($atts) {
+        $user_id = get_current_user_id();
+        $user_settings = $this->get_user_settings($user_id);
+        $user_stats = $this->get_user_stats($user_id);
+        ?>
+        
+        <!-- Main Sight Reading Container -->
+        <div id="sightReadingGame" class="srt-container" data-config='<?php echo json_encode($atts); ?>'>
+            
+            <!-- Loading Screen -->
+            <div class="srt-loading-screen">
+                <div class="srt-loader">
+                    <div class="srt-loader-note"></div>
+                    <div class="srt-loader-text">Loading PianoMode Sight Reading...</div>
+                </div>
+            </div>
+            
+            <!-- Top Toolbar -->
+            <div class="srt-toolbar-top">
+                <div class="srt-toolbar-section srt-toolbar-left">
+                    <button class="srt-btn srt-btn-menu" id="srtMenuToggle">
+                        <svg class="srt-icon" viewBox="0 0 24 24">
+                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                        </svg>
+                        <span>Menu</span>
+                    </button>
+                    
+                    <div class="srt-difficulty-selector">
+                        <label>Level:</label>
+                        <select id="srtDifficultySelect" class="srt-select">
+                            <?php foreach ($this->difficulty_levels as $key => $level): ?>
+                                <option value="<?php echo $key; ?>" <?php echo ($key === $user_settings['difficulty']) ? 'selected' : ''; ?>>
+                                    <?php echo $level['name']; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="srt-toolbar-section srt-toolbar-center">
+                    <div class="srt-logo">
+                        <img src="<?php echo site_url('/wp-content/uploads/2025/05/Logo-def_NOIR.png'); ?>" alt="PianoMode">
+                        <span>Sight Reading</span>
+                    </div>
+                </div>
+                
+                <div class="srt-toolbar-section srt-toolbar-right">
+                    <div class="srt-stats-mini">
+                        <div class="srt-stat">
+                            <span class="srt-stat-label">Score:</span>
+                            <span class="srt-stat-value" id="srtScore">0</span>
+                        </div>
+                        <div class="srt-stat">
+                            <span class="srt-stat-label">Streak:</span>
+                            <span class="srt-stat-value" id="srtStreak">0</span>
+                        </div>
+                        <div class="srt-stat">
+                            <span class="srt-stat-label">Accuracy:</span>
+                            <span class="srt-stat-value" id="srtAccuracy">0%</span>
+                        </div>
+                    </div>
+                    
+                    <?php if (is_user_logged_in()): ?>
+                        <button class="srt-btn srt-btn-account" id="srtAccountBtn">
+                            <?php echo get_avatar($user_id, 32); ?>
+                            <span><?php echo esc_html(wp_get_current_user()->display_name); ?></span>
+                        </button>
+                    <?php else: ?>
+                        <button class="srt-btn srt-btn-login" id="srtLoginBtn">
+                            <svg class="srt-icon" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                            </svg>
+                            <span>Login</span>
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+            
+            <!-- Control Bar -->
+            <div class="srt-control-bar">
+                <div class="srt-control-group">
+                    <button class="srt-btn srt-btn-play" id="srtPlayBtn">
+                        <svg class="srt-icon" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        <span>Start</span>
+                    </button>
+                    
+                    <button class="srt-btn srt-btn-pause" id="srtPauseBtn" style="display: none;">
+                        <svg class="srt-icon" viewBox="0 0 24 24">
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                        </svg>
+                        <span>Pause</span>
+                    </button>
+                    
+                    <button class="srt-btn srt-btn-stop" id="srtStopBtn">
+                        <svg class="srt-icon" viewBox="0 0 24 24">
+                            <path d="M6 6h12v12H6z"/>
+                        </svg>
+                        <span>Stop</span>
+                    </button>
+                    
+                    <button class="srt-btn srt-btn-reset" id="srtResetBtn">
+                        <svg class="srt-icon" viewBox="0 0 24 24">
+                            <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                        </svg>
+                        <span>Reset</span>
+                    </button>
+                </div>
+                
+                <div class="srt-control-group srt-mode-selector">
+                    <button class="srt-mode-btn active" data-mode="wait">
+                        <svg class="srt-icon" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                        <span>Wait Mode</span>
+                    </button>
+                    
+                    <button class="srt-mode-btn" data-mode="scroll">
+                        <svg class="srt-icon" viewBox="0 0 24 24">
+                            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                        </svg>
+                        <span>Scroll Mode</span>
+                    </button>
+                </div>
+                
+                <div class="srt-control-group srt-tempo-control">
+                    <label for="srtTempoSlider">Tempo:</label>
+                    <input type="range" id="srtTempoSlider" class="srt-slider" 
+                           min="40" max="200" value="<?php echo $user_settings['tempo'] ?? 100; ?>">
+                    <span class="srt-tempo-value" id="srtTempoValue"><?php echo $user_settings['tempo'] ?? 100; ?></span>
+                    <span class="srt-tempo-unit">BPM</span>
+                </div>
+                
+                <div class="srt-control-group">
+                    <button class="srt-btn srt-btn-metronome" id="srtMetronomeBtn">
+                        <svg class="srt-icon" viewBox="0 0 24 24">
+                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                        </svg>
+                        <span>Metronome</span>
+                    </button>
+                    
+                    <button class="srt-btn srt-btn-settings" id="srtSettingsBtn">
+                        <svg class="srt-icon" viewBox="0 0 24 24">
+                            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                        </svg>
+                        <span>Settings</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Main Content Area -->
+            <div class="srt-main-content">
+                
+                <!-- Left Panel (Settings) -->
+                <div class="srt-panel srt-panel-left" id="srtSettingsPanel">
+                    <div class="srt-panel-header">
+                        <h3>Settings</h3>
+                        <button class="srt-panel-close" id="srtPanelClose">×</button>
+                    </div>
+                    
+                    <div class="srt-panel-content">
+                        <!-- Staff Settings -->
+                        <div class="srt-settings-section">
+                            <h4>Staff Settings</h4>
+                            
+                            <div class="srt-setting-row">
+                                <label>Clef:</label>
+                                <div class="srt-btn-group">
+                                    <button class="srt-btn-option active" data-clef="treble">Treble</button>
+                                    <button class="srt-btn-option" data-clef="bass">Bass</button>
+                                    <button class="srt-btn-option" data-clef="grand">Grand Staff</button>
+                                </div>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>Key Signature:</label>
+                                <select id="srtKeySignature" class="srt-select">
+                                    <option value="C">C Major / A minor</option>
+                                    <option value="G">G Major / E minor</option>
+                                    <option value="D">D Major / B minor</option>
+                                    <option value="A">A Major / F# minor</option>
+                                    <option value="E">E Major / C# minor</option>
+                                    <option value="B">B Major / G# minor</option>
+                                    <option value="F#">F# Major / D# minor</option>
+                                    <option value="Gb">Gb Major / Eb minor</option>
+                                    <option value="Db">Db Major / Bb minor</option>
+                                    <option value="Ab">Ab Major / F minor</option>
+                                    <option value="Eb">Eb Major / C minor</option>
+                                    <option value="Bb">Bb Major / G minor</option>
+                                    <option value="F">F Major / D minor</option>
+                                </select>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>Time Signature:</label>
+                                <select id="srtTimeSignature" class="srt-select">
+                                    <option value="4/4">4/4</option>
+                                    <option value="3/4">3/4</option>
+                                    <option value="6/8">6/8</option>
+                                    <option value="2/4">2/4</option>
+                                    <option value="5/4">5/4</option>
+                                    <option value="7/8">7/8</option>
+                                    <option value="12/8">12/8</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Note Generation Settings -->
+                        <div class="srt-settings-section">
+                            <h4>Note Generation</h4>
+                            
+                            <div class="srt-setting-row">
+                                <label>Generator Type:</label>
+                                <div class="srt-btn-group">
+                                    <button class="srt-btn-option active" data-generator="random">Random</button>
+                                    <button class="srt-btn-option" data-generator="triads">Triads</button>
+                                    <button class="srt-btn-option" data-generator="scales">Scales</button>
+                                    <button class="srt-btn-option" data-generator="progression">Progression</button>
+                                </div>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>Note Range:</label>
+                                <div class="srt-range-selector">
+                                    <select id="srtRangeMin" class="srt-select-small">
+                                        <option value="C2">C2</option>
+                                        <option value="C3" selected>C3</option>
+                                        <option value="C4">C4</option>
+                                        <option value="C5">C5</option>
+                                    </select>
+                                    <span>to</span>
+                                    <select id="srtRangeMax" class="srt-select-small">
+                                        <option value="C4">C4</option>
+                                        <option value="C5" selected>C5</option>
+                                        <option value="C6">C6</option>
+                                        <option value="C7">C7</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>Hands:</label>
+                                <div class="srt-btn-group">
+                                    <button class="srt-btn-option active" data-hands="both">Both</button>
+                                    <button class="srt-btn-option" data-hands="right">Right</button>
+                                    <button class="srt-btn-option" data-hands="left">Left</button>
+                                </div>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>Accidentals:</label>
+                                <div class="srt-switch">
+                                    <input type="checkbox" id="srtAccidentals" <?php echo $user_settings['use_accidentals'] ? 'checked' : ''; ?>>
+                                    <label for="srtAccidentals"></label>
+                                </div>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>Chord Density:</label>
+                                <input type="range" id="srtChordDensity" class="srt-slider" 
+                                       min="1" max="6" value="<?php echo $user_settings['chord_density'] ?? 2; ?>">
+                                <span class="srt-value-display" id="srtChordDensityValue">
+                                    <?php echo $user_settings['chord_density'] ?? 2; ?> notes
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Display Settings -->
+                        <div class="srt-settings-section">
+                            <h4>Display Settings</h4>
+                            
+                            <div class="srt-setting-row">
+                                <label>Note Names:</label>
+                                <select id="srtNoteNames" class="srt-select">
+                                    <option value="none">None</option>
+                                    <option value="international">International (C, D, E)</option>
+                                    <option value="latin">Latin (Do, Ré, Mi)</option>
+                                    <option value="german">German (C, D, E, F, G, A, H)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>Show Keyboard:</label>
+                                <div class="srt-switch">
+                                    <input type="checkbox" id="srtShowKeyboard" checked>
+                                    <label for="srtShowKeyboard"></label>
+                                </div>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>Show Statistics:</label>
+                                <div class="srt-switch">
+                                    <input type="checkbox" id="srtShowStats" checked>
+                                    <label for="srtShowStats"></label>
+                                </div>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>Highlight Errors:</label>
+                                <div class="srt-switch">
+                                    <input type="checkbox" id="srtHighlightErrors" checked>
+                                    <label for="srtHighlightErrors"></label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Sound Settings -->
+                        <div class="srt-settings-section">
+                            <h4>Sound Settings</h4>
+                            
+                            <div class="srt-setting-row">
+                                <label>Piano Sound:</label>
+                                <select id="srtPianoSound" class="srt-select">
+                                    <option value="grand">Grand Piano</option>
+                                    <option value="upright">Upright Piano</option>
+                                    <option value="electric">Electric Piano</option>
+                                    <option value="synth">Synthesizer</option>
+                                    <option value="custom">Custom Upload</option>
+                                </select>
+                            </div>
+                            
+                            <div class="srt-setting-row" id="srtCustomSoundRow" style="display: none;">
+                                <label>Upload Sound:</label>
+                                <input type="file" id="srtSoundUpload" accept="audio/*" class="srt-file-input">
+                                <button class="srt-btn srt-btn-small" id="srtUploadBtn">Upload</button>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>Volume:</label>
+                                <input type="range" id="srtVolume" class="srt-slider" 
+                                       min="0" max="100" value="<?php echo $user_settings['volume'] ?? 70; ?>">
+                                <span class="srt-value-display" id="srtVolumeValue">
+                                    <?php echo $user_settings['volume'] ?? 70; ?>%
+                                </span>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>Metronome Volume:</label>
+                                <input type="range" id="srtMetronomeVolume" class="srt-slider" 
+                                       min="0" max="100" value="<?php echo $user_settings['metronome_volume'] ?? 50; ?>">
+                                <span class="srt-value-display" id="srtMetronomeVolumeValue">
+                                    <?php echo $user_settings['metronome_volume'] ?? 50; ?>%
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- MIDI Settings -->
+                        <div class="srt-settings-section srt-midi-section">
+                            <h4>MIDI Settings</h4>
+                            
+                            <div class="srt-setting-row">
+                                <label>MIDI Input:</label>
+                                <select id="srtMidiInput" class="srt-select">
+                                    <option value="none">No MIDI Device</option>
+                                </select>
+                                <button class="srt-btn srt-btn-small" id="srtMidiRefresh">Refresh</button>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>MIDI Output:</label>
+                                <select id="srtMidiOutput" class="srt-select">
+                                    <option value="none">Built-in Piano</option>
+                                </select>
+                            </div>
+                            
+                            <div class="srt-setting-row">
+                                <label>MIDI Channel:</label>
+                                <select id="srtMidiChannel" class="srt-select">
+                                    <?php for ($i = 1; $i <= 16; $i++): ?>
+                                        <option value="<?php echo $i; ?>" <?php echo ($i === 1) ? 'selected' : ''; ?>>
+                                            Channel <?php echo $i; ?>
+                                        </option>
+                                    <?php endfor; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="srt-midi-status">
+                                <span class="srt-status-indicator" id="srtMidiStatus"></span>
+                                <span class="srt-status-text" id="srtMidiStatusText">MIDI Disconnected</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Center Area (Staff) -->
+                <div class="srt-center-area">
+                    <!-- Score Display Canvas -->
+                    <div class="srt-score-container">
+                        <canvas id="srtScoreCanvas" class="srt-score-canvas"></canvas>
+                        
+                        <!-- Playhead Line -->
+                        <div class="srt-playhead" id="srtPlayhead"></div>
+                        
+                        <!-- Note Feedback Layer -->
+                        <div class="srt-feedback-layer" id="srtFeedbackLayer"></div>
+                    </div>
+                    
+                    <!-- Piano Keyboard -->
+                    <div class="srt-piano-container" id="srtPianoContainer">
+                        <div class="srt-piano-wrapper">
+                            <div class="srt-piano-keyboard" id="srtPianoKeyboard">
+                                <!-- Piano keys will be generated by JavaScript -->
+                            </div>
+                        </div>
+                        
+                        <!-- Piano Controls -->
+                        <div class="srt-piano-controls">
+                            <div class="srt-octave-control">
+                                <button class="srt-btn srt-btn-small" id="srtOctaveDown">
+                                    <svg class="srt-icon-small" viewBox="0 0 24 24">
+                                        <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                                    </svg>
+                                </button>
+                                <span class="srt-octave-display">Octave <span id="srtOctaveValue">4</span></span>
+                                <button class="srt-btn srt-btn-small" id="srtOctaveUp">
+                                    <svg class="srt-icon-small" viewBox="0 0 24 24">
+                                        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            
+                            <div class="srt-transpose-control">
+                                <label>Transpose:</label>
+                                <select id="srtTranspose" class="srt-select-small">
+                                    <?php for ($i = -12; $i <= 12; $i++): ?>
+                                        <option value="<?php echo $i; ?>" <?php echo ($i === 0) ? 'selected' : ''; ?>>
+                                            <?php echo ($i > 0 ? '+' : '') . $i; ?>
+                                        </option>
+                                    <?php endfor; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="srt-sustain-control">
+                                <button class="srt-btn srt-btn-small" id="srtSustainBtn">
+                                    <svg class="srt-icon-small" viewBox="0 0 24 24">
+                                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                                    </svg>
+                                    <span>Sustain</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Panel (Statistics) -->
+                <div class="srt-panel srt-panel-right" id="srtStatsPanel">
+                    <div class="srt-panel-header">
+                        <h3>Statistics</h3>
+                    </div>
+                    
+                    <div class="srt-panel-content">
+                        <!-- Session Stats -->
+                        <div class="srt-stats-section">
+                            <h4>Current Session</h4>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">Duration:</span>
+                                <span class="srt-stat-value" id="srtDuration">00:00</span>
+                            </div>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">Notes Played:</span>
+                                <span class="srt-stat-value" id="srtNotesPlayed">0</span>
+                            </div>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">Correct:</span>
+                                <span class="srt-stat-value srt-success" id="srtCorrectNotes">0</span>
+                            </div>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">Incorrect:</span>
+                                <span class="srt-stat-value srt-error" id="srtIncorrectNotes">0</span>
+                            </div>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">Accuracy:</span>
+                                <span class="srt-stat-value" id="srtSessionAccuracy">0%</span>
+                            </div>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">Best Streak:</span>
+                                <span class="srt-stat-value" id="srtBestStreak">0</span>
+                            </div>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">Score:</span>
+                                <span class="srt-stat-value srt-gold" id="srtSessionScore">0</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Overall Stats -->
+                        <div class="srt-stats-section">
+                            <h4>Overall Progress</h4>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">Total Sessions:</span>
+                                <span class="srt-stat-value"><?php echo $user_stats['total_sessions'] ?? 0; ?></span>
+                            </div>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">Total Time:</span>
+                                <span class="srt-stat-value"><?php echo $this->format_time($user_stats['total_time'] ?? 0); ?></span>
+                            </div>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">Total Notes:</span>
+                                <span class="srt-stat-value"><?php echo number_format($user_stats['total_notes'] ?? 0); ?></span>
+                            </div>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">Avg Accuracy:</span>
+                                <span class="srt-stat-value"><?php echo round($user_stats['avg_accuracy'] ?? 0, 1); ?>%</span>
+                            </div>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">High Score:</span>
+                                <span class="srt-stat-value srt-gold"><?php echo number_format($user_stats['high_score'] ?? 0); ?></span>
+                            </div>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">Level:</span>
+                                <span class="srt-stat-value"><?php echo $user_stats['level'] ?? 1; ?></span>
+                            </div>
+                            
+                            <div class="srt-stat-row">
+                                <span class="srt-stat-label">XP:</span>
+                                <span class="srt-stat-value"><?php echo number_format($user_stats['xp'] ?? 0); ?></span>
+                            </div>
+                        </div>
+                        
+                        <!-- Recent Achievements -->
+                        <div class="srt-stats-section">
+                            <h4>Recent Achievements</h4>
+                            
+                            <div class="srt-achievements-list">
+                                <?php 
+                                $user_achievements = $this->get_user_achievements($user_id);
+                                if (!empty($user_achievements)): 
+                                    foreach (array_slice($user_achievements, 0, 5) as $achievement_id):
+                                        $achievement = $this->achievements[$achievement_id] ?? null;
+                                        if ($achievement):
+                                ?>
+                                    <div class="srt-achievement-item">
+                                        <span class="srt-achievement-icon"><?php echo $achievement['icon']; ?></span>
+                                        <div class="srt-achievement-info">
+                                            <span class="srt-achievement-name"><?php echo $achievement['name']; ?></span>
+                                            <span class="srt-achievement-xp">+<?php echo $achievement['xp']; ?> XP</span>
+                                        </div>
+                                    </div>
+                                <?php 
+                                        endif;
+                                    endforeach;
+                                else:
+                                ?>
+                                    <p class="srt-no-achievements">No achievements yet. Keep practicing!</p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modals -->
+            <!-- Achievement Modal -->
+            <div class="srt-modal" id="srtAchievementModal">
+                <div class="srt-modal-content srt-achievement-modal">
+                    <div class="srt-achievement-animation">
+                        <div class="srt-achievement-icon-large" id="srtAchievementIcon"></div>
+                    </div>
+                    <h2>Achievement Unlocked!</h2>
+                    <h3 id="srtAchievementName"></h3>
+                    <p id="srtAchievementDescription"></p>
+                    <div class="srt-achievement-xp">
+                        <span>+</span>
+                        <span id="srtAchievementXP"></span>
+                        <span>XP</span>
+                    </div>
+                    <button class="srt-btn srt-btn-primary" onclick="this.closest('.srt-modal').style.display='none'">
+                        Awesome!
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Level Up Modal -->
+            <div class="srt-modal" id="srtLevelUpModal">
+                <div class="srt-modal-content srt-levelup-modal">
+                    <div class="srt-levelup-animation">
+                        <div class="srt-levelup-number" id="srtNewLevel"></div>
+                    </div>
+                    <h2>Level Up!</h2>
+                    <p>Congratulations! You've reached a new level!</p>
+                    <div class="srt-levelup-rewards" id="srtLevelRewards"></div>
+                    <button class="srt-btn srt-btn-primary" onclick="this.closest('.srt-modal').style.display='none'">
+                        Continue
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Settings Save Confirmation -->
+            <div class="srt-toast" id="srtToast">
+                <span class="srt-toast-message" id="srtToastMessage"></span>
+            </div>
+        </div>
+        
+        <?php
+    }
+    
+    // Get user settings
+    private function get_user_settings($user_id = null) {
+        if (!$user_id) {
+            $user_id = get_current_user_id();
+        }
+        
+        if (!$user_id) {
+            return $this->get_default_settings();
+        }
+        
+        $settings = get_user_meta($user_id, 'srt_settings', true);
+        
+        if (empty($settings)) {
+            return $this->get_default_settings();
+        }
+        
+        return wp_parse_args($settings, $this->get_default_settings());
+    }
+    
+    // Get default settings
+    private function get_default_settings() {
+        return array(
+            'difficulty' => 'beginner',
+            'tempo' => 100,
+            'volume' => 70,
+            'metronome_volume' => 50,
+            'use_accidentals' => false,
+            'chord_density' => 1,
+            'clef' => 'treble',
+            'key_signature' => 'C',
+            'time_signature' => '4/4',
+            'generator_type' => 'random',
+            'note_range_min' => 'C3',
+            'note_range_max' => 'C5',
+            'hands' => 'both',
+            'note_names' => 'none',
+            'show_keyboard' => true,
+            'show_stats' => true,
+            'highlight_errors' => true,
+            'piano_sound' => 'grand',
+            'midi_input' => 'none',
+            'midi_output' => 'none',
+            'midi_channel' => 1,
+            'transpose' => 0,
+            'mode' => 'wait'
+        );
+    }
+    
+    // Get user statistics
+    private function get_user_stats($user_id = null) {
+        if (!$user_id) {
+            $user_id = get_current_user_id();
+        }
+        
+        if (!$user_id) {
+            return $this->get_default_stats();
+        }
+        
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'srt_statistics';
+        
+        $stats = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table_name WHERE user_id = %d",
+            $user_id
+        ), ARRAY_A);
+        
+        if (empty($stats)) {
+            return $this->get_default_stats();
+        }
+        
+        return $stats;
+    }
+    
+    // Get default statistics
+    private function get_default_stats() {
+        return array(
+            'total_sessions' => 0,
+            'total_time' => 0,
+            'total_notes' => 0,
+            'correct_notes' => 0,
+            'incorrect_notes' => 0,
+            'avg_accuracy' => 0,
+            'high_score' => 0,
+            'best_streak' => 0,
+            'level' => 1,
+            'xp' => 0,
+            'achievements' => array()
+        );
+    }
+    
+    // Get user achievements
+    private function get_user_achievements($user_id = null) {
+        if (!$user_id) {
+            $user_id = get_current_user_id();
+        }
+        
+        if (!$user_id) {
+            return array();
+        }
+        
+        $achievements = get_user_meta($user_id, 'srt_achievements', true);
+        
+        return !empty($achievements) ? $achievements : array();
+    }
+    
+    // Format time helper
+    private function format_time($seconds) {
+        $hours = floor($seconds / 3600);
+        $minutes = floor(($seconds % 3600) / 60);
+        $seconds = $seconds % 60;
+        
+        if ($hours > 0) {
+            return sprintf('%dh %dm', $hours, $minutes);
+        } else if ($minutes > 0) {
+            return sprintf('%dm %ds', $minutes, $seconds);
+        } else {
+            return sprintf('%ds', $seconds);
+        }
+    }
+    
+    // Get translations
+    private function get_translations() {
+        return array(
+            'start' => __('Start', 'pianomode'),
+            'pause' => __('Pause', 'pianomode'),
+            'stop' => __('Stop', 'pianomode'),
+            'reset' => __('Reset', 'pianomode'),
+            'settings' => __('Settings', 'pianomode'),
+            'statistics' => __('Statistics', 'pianomode'),
+            'achievements' => __('Achievements', 'pianomode'),
+            'level_up' => __('Level Up!', 'pianomode'),
+            'achievement_unlocked' => __('Achievement Unlocked!', 'pianomode'),
+            'correct' => __('Correct!', 'pianomode'),
+            'incorrect' => __('Try Again', 'pianomode'),
+            'perfect' => __('Perfect!', 'pianomode'),
+            'excellent' => __('Excellent!', 'pianomode'),
+            'good' => __('Good!', 'pianomode'),
+            'keep_trying' => __('Keep Trying!', 'pianomode')
+        );
+    }
+    
+    // AJAX handler for saving progress
+    public function ajax_save_progress() {
+        check_ajax_referer('srt_nonce', 'nonce');
+        
+        if (!is_user_logged_in()) {
+            wp_send_json_error('Not logged in');
+            return;
+        }
+        
+        $user_id = get_current_user_id();
+        $data = $_POST['data'] ?? array();
+        
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'srt_statistics';
+        
+        // Update or insert statistics
+        $existing = $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM $table_name WHERE user_id = %d",
+            $user_id
+        ));
+        
+        if ($existing) {
+            $wpdb->update(
+                $table_name,
+                array(
+                    'total_sessions' => $data['total_sessions'] ?? 0,
+                    'total_time' => $data['total_time'] ?? 0,
+                    'total_notes' => $data['total_notes'] ?? 0,
+                    'correct_notes' => $data['correct_notes'] ?? 0,
+                    'incorrect_notes' => $data['incorrect_notes'] ?? 0,
+                    'avg_accuracy' => $data['avg_accuracy'] ?? 0,
+                    'high_score' => $data['high_score'] ?? 0,
+                    'best_streak' => $data['best_streak'] ?? 0,
+                    'level' => $data['level'] ?? 1,
+                    'xp' => $data['xp'] ?? 0,
+                    'updated_at' => current_time('mysql')
+                ),
+                array('user_id' => $user_id)
+            );
+        } else {
+            $wpdb->insert(
+                $table_name,
+                array(
+                    'user_id' => $user_id,
+                    'total_sessions' => $data['total_sessions'] ?? 0,
+                    'total_time' => $data['total_time'] ?? 0,
+                    'total_notes' => $data['total_notes'] ?? 0,
+                    'correct_notes' => $data['correct_notes'] ?? 0,
+                    'incorrect_notes' => $data['incorrect_notes'] ?? 0,
+                    'avg_accuracy' => $data['avg_accuracy'] ?? 0,
+                    'high_score' => $data['high_score'] ?? 0,
+                    'best_streak' => $data['best_streak'] ?? 0,
+                    'level' => $data['level'] ?? 1,
+                    'xp' => $data['xp'] ?? 0,
+                    'created_at' => current_time('mysql'),
+                    'updated_at' => current_time('mysql')
+                )
+            );
+        }
+        
+        // Save session history
+        $history_table = $wpdb->prefix . 'srt_sessions';
+        $wpdb->insert(
+            $history_table,
+            array(
+                'user_id' => $user_id,
+                'duration' => $data['session_duration'] ?? 0,
+                'notes_played' => $data['session_notes'] ?? 0,
+                'accuracy' => $data['session_accuracy'] ?? 0,
+                'score' => $data['session_score'] ?? 0,
+                'difficulty' => $data['difficulty'] ?? 'beginner',
+                'created_at' => current_time('mysql')
+            )
+        );
+        
+        wp_send_json_success('Progress saved');
+    }
+    
+    // AJAX handler for getting statistics
+    public function ajax_get_stats() {
+        check_ajax_referer('srt_nonce', 'nonce');
+        
+        if (!is_user_logged_in()) {
+            wp_send_json_error('Not logged in');
+            return;
+        }
+        
+        $user_id = get_current_user_id();
+        $stats = $this->get_user_stats($user_id);
+        $achievements = $this->get_user_achievements($user_id);
+        
+        wp_send_json_success(array(
+            'stats' => $stats,
+            'achievements' => $achievements
+        ));
+    }
+    
+    // AJAX handler for unlocking achievements
+    public function ajax_unlock_achievement() {
+        check_ajax_referer('srt_nonce', 'nonce');
+        
+        if (!is_user_logged_in()) {
+            wp_send_json_error('Not logged in');
+            return;
+        }
+        
+        $user_id = get_current_user_id();
+        $achievement_id = sanitize_text_field($_POST['achievement_id'] ?? '');
+        
+        if (!isset($this->achievements[$achievement_id])) {
+            wp_send_json_error('Invalid achievement');
+            return;
+        }
+        
+        $user_achievements = $this->get_user_achievements($user_id);
+        
+        if (in_array($achievement_id, $user_achievements)) {
+            wp_send_json_error('Achievement already unlocked');
+            return;
+        }
+        
+        $user_achievements[] = $achievement_id;
+        update_user_meta($user_id, 'srt_achievements', $user_achievements);
+        
+        // Add XP
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'srt_statistics';
+        $achievement = $this->achievements[$achievement_id];
+        
+        $wpdb->query($wpdb->prepare(
+            "UPDATE $table_name SET xp = xp + %d WHERE user_id = %d",
+            $achievement['xp'],
+            $user_id
+        ));
+        
+        wp_send_json_success(array(
+            'achievement' => $achievement,
+            'xp_gained' => $achievement['xp']
+        ));
+    }
+    
+    // AJAX handler for updating settings
+    public function ajax_update_settings() {
+        check_ajax_referer('srt_nonce', 'nonce');
+        
+        if (!is_user_logged_in()) {
+            wp_send_json_error('Not logged in');
+            return;
+        }
+        
+        $user_id = get_current_user_id();
+        $settings = $_POST['settings'] ?? array();
+        
+        // Sanitize settings
+        $sanitized_settings = array();
+        foreach ($settings as $key => $value) {
+            $sanitized_settings[sanitize_key($key)] = sanitize_text_field($value);
+        }
+        
+        update_user_meta($user_id, 'srt_settings', $sanitized_settings);
+        
+        wp_send_json_success('Settings updated');
+    }
+    
+    // AJAX handler for generating exercises
+    public function ajax_generate_exercise() {
+        check_ajax_referer('srt_nonce', 'nonce');
+        
+        $difficulty = sanitize_text_field($_POST['difficulty'] ?? 'beginner');
+        $generator_type = sanitize_text_field($_POST['generator_type'] ?? 'random');
+        $key_signature = sanitize_text_field($_POST['key_signature'] ?? 'C');
+        $time_signature = sanitize_text_field($_POST['time_signature'] ?? '4/4');
+        
+        $exercise = $this->generate_exercise(
+            $difficulty,
+            $generator_type,
+            $key_signature,
+            $time_signature
+        );
+        
+        wp_send_json_success($exercise);
+    }
+    
+    // Generate exercise
+    private function generate_exercise($difficulty, $generator_type, $key_signature, $time_signature) {
+        $level_config = $this->difficulty_levels[$difficulty] ?? $this->difficulty_levels['beginner'];
+        $notes = array();
+        
+        switch ($generator_type) {
+            case 'triads':
+                $notes = $this->generate_triads($level_config, $key_signature);
+                break;
+            
+            case 'scales':
+                $notes = $this->generate_scales($level_config, $key_signature);
+                break;
+            
+            case 'progression':
+                $notes = $this->generate_progression($level_config, $key_signature);
+                break;
+            
+            default:
+                $notes = $this->generate_random_notes($level_config);
+                break;
+        }
+        
+        return array(
+            'notes' => $notes,
+            'key_signature' => $key_signature,
+            'time_signature' => $time_signature,
+            'tempo' => rand($level_config['tempo_range'][0], $level_config['tempo_range'][1])
+        );
+    }
+    
+    // Generate random notes
+    private function generate_random_notes($config) {
+        $notes = array();
+        $measure_count = 4;
+        $beats_per_measure = 4;
+        
+        for ($measure = 0; $measure < $measure_count; $measure++) {
+            for ($beat = 0; $beat < $beats_per_measure; $beat++) {
+                $note = array(
+                    'pitch' => $this->get_random_pitch($config['range']),
+                    'duration' => $this->get_random_duration($config['note_types']),
+                    'measure' => $measure,
+                    'beat' => $beat
+                );
+                
+                if ($config['notes_count'] > 1 && rand(0, 100) < 30) {
+                    $note['chord'] = $this->generate_chord($note['pitch'], $config['notes_count']);
+                }
+                
+                $notes[] = $note;
+            }
+        }
+        
+        return $notes;
+    }
+    
+    // Generate triads
+    private function generate_triads($config, $key) {
+        $notes = array();
+        $triads = array(
+            'major' => array(0, 4, 7),
+            'minor' => array(0, 3, 7),
+            'diminished' => array(0, 3, 6),
+            'augmented' => array(0, 4, 8)
+        );
+        
+        $measure_count = 4;
+        
+        for ($measure = 0; $measure < $measure_count; $measure++) {
+            $triad_type = array_rand($triads);
+            $root = $this->get_random_pitch($config['range']);
+            
+            foreach ($triads[$triad_type] as $index => $interval) {
+                $notes[] = array(
+                    'pitch' => $root + $interval,
+                    'duration' => 'quarter',
+                    'measure' => $measure,
+                    'beat' => $index,
+                    'triad' => $triad_type
+                );
+            }
+        }
+        
+        return $notes;
+    }
+    
+    // Generate scales
+    private function generate_scales($config, $key) {
+        $notes = array();
+        $scale_type = array_rand($this->scale_patterns);
+        $scale = $this->scale_patterns[$scale_type];
+        $root = $this->get_pitch_from_key($key);
+        
+        $direction = 'ascending';
+        $octave = 4;
+        
+        foreach ($scale as $index => $interval) {
+            $notes[] = array(
+                'pitch' => $root + ($octave * 12) + $interval,
+                'duration' => 'eighth',
+                'measure' => floor($index / 8),
+                'beat' => $index % 8 * 0.5,
+                'scale' => $scale_type
+            );
+        }
+        
+        return $notes;
+    }
+    
+    // Generate chord progression
+    private function generate_progression($config, $key) {
+        $notes = array();
+        $progression_type = array_rand($this->chord_progressions);
+        $progression = $this->chord_progressions[$progression_type][array_rand($this->chord_progressions[$progression_type])];
+        
+        foreach ($progression as $measure => $chord_symbol) {
+            $chord_notes = $this->get_chord_from_symbol($chord_symbol, $key);
+            
+            foreach ($chord_notes as $beat => $pitch) {
+                $notes[] = array(
+                    'pitch' => $pitch,
+                    'duration' => 'whole',
+                    'measure' => $measure,
+                    'beat' => 0,
+                    'chord_symbol' => $chord_symbol
+                );
+            }
+        }
+        
+        return $notes;
+    }
+    
+    // Helper: Get random pitch
+    private function get_random_pitch($range) {
+        $min = $this->note_to_midi($range[0]);
+        $max = $this->note_to_midi($range[1]);
+        return rand($min, $max);
+    }
+    
+    // Helper: Convert note name to MIDI number
+    private function note_to_midi($note) {
+        $notes = array('C' => 0, 'D' => 2, 'E' => 4, 'F' => 5, 'G' => 7, 'A' => 9, 'B' => 11);
+        $octave = intval(substr($note, -1));
+        $pitch = $notes[substr($note, 0, 1)] ?? 0;
+        
+        if (strpos($note, '#') !== false) {
+            $pitch++;
+        } else if (strpos($note, 'b') !== false) {
+            $pitch--;
+        }
+        
+        return ($octave + 1) * 12 + $pitch;
+    }
+    
+    // Helper: Get pitch from key signature
+    private function get_pitch_from_key($key) {
+        $keys = array(
+            'C' => 60, 'G' => 67, 'D' => 62, 'A' => 69, 'E' => 64, 'B' => 71,
+            'F#' => 66, 'Gb' => 66, 'Db' => 61, 'Ab' => 68, 'Eb' => 63, 'Bb' => 70, 'F' => 65
+        );
+        
+        return $keys[$key] ?? 60;
+    }
+    
+    // Helper: Get random duration
+    private function get_random_duration($note_types) {
+        if (in_array('all', $note_types)) {
+            $note_types = array('whole', 'half', 'quarter', 'eighth', 'sixteenth', 'dotted');
+        }
+        
+        return $note_types[array_rand($note_types)];
+    }
+    
+    // Helper: Generate chord
+    private function generate_chord($root, $note_count) {
+        $intervals = array(3, 4, 5, 7, 9, 11);
+        $chord = array($root);
+        
+        for ($i = 1; $i < min($note_count, count($intervals)); $i++) {
+            $chord[] = $root + $intervals[$i - 1];
+        }
+        
+        return $chord;
+    }
+    
+    // Helper: Get chord from symbol
+    private function get_chord_from_symbol($symbol, $key) {
+        $root = $this->get_pitch_from_key($key);
+        $degree_map = array(
+            'I' => 0, 'ii' => 2, 'iii' => 4, 'IV' => 5, 'V' => 7, 'vi' => 9, 'vii' => 11
+        );
+        
+        // Parse chord symbol
+        preg_match('/([IVvi]+)(.*?)/', $symbol, $matches);
+        $degree = $matches[1] ?? 'I';
+        $quality = $matches[2] ?? '';
+        
+        $base = $root + ($degree_map[$degree] ?? 0);
+        
+        // Build chord based on quality
+        $chord = array($base);
+        
+        if (strpos($quality, 'MA7') !== false || strpos($quality, 'maj7') !== false) {
+            $chord[] = $base + 4;
+            $chord[] = $base + 7;
+            $chord[] = $base + 11;
+        } else if (strpos($quality, '7') !== false) {
+            $chord[] = $base + 4;
+            $chord[] = $base + 7;
+            $chord[] = $base + 10;
+        } else if (strpos($quality, 'm') !== false) {
+            $chord[] = $base + 3;
+            $chord[] = $base + 7;
+        } else {
+            $chord[] = $base + 4;
+            $chord[] = $base + 7;
+        }
+        
+        return $chord;
+    }
+    
+    // AJAX handler for uploading custom sound
+    public function ajax_upload_sound() {
+        check_ajax_referer('srt_nonce', 'nonce');
+        
+        if (!is_user_logged_in()) {
+            wp_send_json_error('Not logged in');
+            return;
+        }
+        
+        if (empty($_FILES['sound_file'])) {
+            wp_send_json_error('No file uploaded');
+            return;
+        }
+        
+        $file = $_FILES['sound_file'];
+        
+        // Validate file type
+        $allowed_types = array('audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp3');
+        if (!in_array($file['type'], $allowed_types)) {
+            wp_send_json_error('Invalid file type. Please upload an audio file.');
+            return;
+        }
+        
+        // Validate file size (max 5MB)
+        if ($file['size'] > 5 * 1024 * 1024) {
+            wp_send_json_error('File too large. Maximum size is 5MB.');
+            return;
+        }
+        
+        // Upload file
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        $upload = wp_handle_upload($file, array('test_form' => false));
+        
+        if (isset($upload['error'])) {
+            wp_send_json_error($upload['error']);
+            return;
+        }
+        
+        // Save sound URL to user meta
+        $user_id = get_current_user_id();
+        update_user_meta($user_id, 'srt_custom_sound', $upload['url']);
+        
+        wp_send_json_success(array(
+            'url' => $upload['url'],
+            'message' => 'Sound uploaded successfully'
+        ));
+    }
+    
+    // Create database tables
+    public function create_database_tables() {
+        global $wpdb;
+        
+        $charset_collate = $wpdb->get_charset_collate();
+        
+        // Statistics table
+        $table_name = $wpdb->prefix . 'srt_statistics';
+        
+        $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+            id mediumint(9) NOT NULL AUTO_INCREMENT,
+            user_id bigint(20) NOT NULL,
+            total_sessions int(11) DEFAULT 0,
+            total_time int(11) DEFAULT 0,
+            total_notes int(11) DEFAULT 0,
+            correct_notes int(11) DEFAULT 0,
+            incorrect_notes int(11) DEFAULT 0,
+            avg_accuracy float DEFAULT 0,
+            high_score int(11) DEFAULT 0,
+            best_streak int(11) DEFAULT 0,
+            level int(11) DEFAULT 1,
+            xp int(11) DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY user_id (user_id)
+        ) $charset_collate;";
+        
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
+        
+        // Sessions history table
+        $table_name = $wpdb->prefix . 'srt_sessions';
+        
+        $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+            id mediumint(9) NOT NULL AUTO_INCREMENT,
+            user_id bigint(20) NOT NULL,
+            duration int(11) DEFAULT 0,
+            notes_played int(11) DEFAULT 0,
+            accuracy float DEFAULT 0,
+            score int(11) DEFAULT 0,
+            difficulty varchar(20) DEFAULT 'beginner',
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY user_id (user_id)
+        ) $charset_collate;";
+        
+        dbDelta($sql);
+    }
+    
+    // Add admin menu
+    public function add_admin_menu() {
+        add_menu_page(
+            'Sight Reading',
+            'Sight Reading',
+            'manage_options',
+            'srt-admin',
+            array($this, 'render_admin_page'),
+            'dashicons-playlist-audio',
+            30
+        );
+        
+        add_submenu_page(
+            'srt-admin',
+            'Statistics',
+            'Statistics',
+            'manage_options',
+            'srt-statistics',
+            array($this, 'render_statistics_page')
+        );
+        
+        add_submenu_page(
+            'srt-admin',
+            'Settings',
+            'Settings',
+            'manage_options',
+            'srt-settings',
+            array($this, 'render_settings_page')
+        );
+    }
+    
+    // Render admin page
+    public function render_admin_page() {
+        ?>
+        <div class="wrap">
+            <h1>PianoMode Sight Reading</h1>
+            
+            <div class="card">
+                <h2>Quick Stats</h2>
+                <?php
+                global $wpdb;
+                $stats_table = $wpdb->prefix . 'srt_statistics';
+                
+                $total_users = $wpdb->get_var("SELECT COUNT(DISTINCT user_id) FROM $stats_table");
+                $total_sessions = $wpdb->get_var("SELECT SUM(total_sessions) FROM $stats_table");
+                $total_time = $wpdb->get_var("SELECT SUM(total_time) FROM $stats_table");
+                $avg_accuracy = $wpdb->get_var("SELECT AVG(avg_accuracy) FROM $stats_table");
+                ?>
+                
+                <table class="wp-list-table widefat fixed striped">
+                    <tbody>
+                        <tr>
+                            <th>Total Users</th>
+                            <td><?php echo number_format($total_users); ?></td>
+                        </tr>
+                        <tr>
+                            <th>Total Sessions</th>
+                            <td><?php echo number_format($total_sessions); ?></td>
+                        </tr>
+                        <tr>
+                            <th>Total Practice Time</th>
+                            <td><?php echo $this->format_time($total_time); ?></td>
+                        </tr>
+                        <tr>
+                            <th>Average Accuracy</th>
+                            <td><?php echo round($avg_accuracy, 1); ?>%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="card">
+                <h2>Shortcode Usage</h2>
+                <p>Use the following shortcode to add the Sight Reading game to any page or post:</p>
+                <code>[sight_reading]</code>
+                
+                <h3>Available Parameters:</h3>
+                <ul>
+                    <li><code>mode</code> - Game mode (practice, test)</li>
+                    <li><code>difficulty</code> - Initial difficulty (beginner, elementary, intermediate, advanced, expert)</li>
+                    <li><code>show_piano</code> - Show piano keyboard (true/false)</li>
+                    <li><code>show_stats</code> - Show statistics panel (true/false)</li>
+                    <li><code>fullscreen</code> - Enable fullscreen mode (true/false)</li>
+                </ul>
+                
+                <h3>Example:</h3>
+                <code>[sight_reading difficulty="intermediate" show_piano="true" show_stats="true"]</code>
+            </div>
+        </div>
+        <?php
+    }
+    
+    // Render statistics page
+    public function render_statistics_page() {
+        global $wpdb;
+        $stats_table = $wpdb->prefix . 'srt_statistics';
+        $sessions_table = $wpdb->prefix . 'srt_sessions';
+        
+        // Get top players
+        $top_players = $wpdb->get_results("
+            SELECT 
+                s.*, 
+                u.display_name, 
+                u.user_email
+            FROM $stats_table s
+            JOIN {$wpdb->users} u ON s.user_id = u.ID
+            ORDER BY s.xp DESC
+            LIMIT 10
+        ");
+        
+        ?>
+        <div class="wrap">
+            <h1>Sight Reading Statistics</h1>
+            
+            <div class="card">
+                <h2>Top Players</h2>
+                
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Level</th>
+                            <th>XP</th>
+                            <th>Sessions</th>
+                            <th>Accuracy</th>
+                            <th>High Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($top_players as $index => $player): ?>
+                        <tr>
+                            <td><?php echo $index + 1; ?></td>
+                            <td>
+                                <?php echo get_avatar($player->user_email, 32); ?>
+                                <?php echo esc_html($player->display_name); ?>
+                            </td>
+                            <td><?php echo $player->level; ?></td>
+                            <td><?php echo number_format($player->xp); ?></td>
+                            <td><?php echo number_format($player->total_sessions); ?></td>
+                            <td><?php echo round($player->avg_accuracy, 1); ?>%</td>
+                            <td><?php echo number_format($player->high_score); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="card">
+                <h2>Recent Sessions</h2>
+                
+                <?php
+                $recent_sessions = $wpdb->get_results("
+                    SELECT 
+                        s.*, 
+                        u.display_name
+                    FROM $sessions_table s
+                    JOIN {$wpdb->users} u ON s.user_id = u.ID
+                    ORDER BY s.created_at DESC
+                    LIMIT 20
+                ");
+                ?>
+                
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Player</th>
+                            <th>Difficulty</th>
+                            <th>Duration</th>
+                            <th>Notes</th>
+                            <th>Accuracy</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($recent_sessions as $session): ?>
+                        <tr>
+                            <td><?php echo human_time_diff(strtotime($session->created_at)); ?> ago</td>
+                            <td><?php echo esc_html($session->display_name); ?></td>
+                            <td><?php echo ucfirst($session->difficulty); ?></td>
+                            <td><?php echo $this->format_time($session->duration); ?></td>
+                            <td><?php echo number_format($session->notes_played); ?></td>
+                            <td><?php echo round($session->accuracy, 1); ?>%</td>
+                            <td><?php echo number_format($session->score); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php
+    }
+    
+    // Render settings page
+    public function render_settings_page() {
+        ?>
+        <div class="wrap">
+            <h1>Sight Reading Settings</h1>
+            
+            <form method="post" action="options.php">
+                <?php settings_fields('srt_settings_group'); ?>
+                
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">Enable Guest Mode</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="srt_enable_guest" value="1" 
+                                       <?php checked(get_option('srt_enable_guest'), 1); ?>>
+                                Allow non-logged in users to play
+                            </label>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">Default Difficulty</th>
+                        <td>
+                            <select name="srt_default_difficulty">
+                                <?php
+                                $current = get_option('srt_default_difficulty', 'beginner');
+                                foreach ($this->difficulty_levels as $key => $level):
+                                ?>
+                                    <option value="<?php echo $key; ?>" <?php selected($current, $key); ?>>
+                                        <?php echo $level['name']; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">Enable Achievements</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="srt_enable_achievements" value="1" 
+                                       <?php checked(get_option('srt_enable_achievements', 1), 1); ?>>
+                                Show achievement notifications
+                            </label>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <th scope="row">Enable Leaderboard</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="srt_enable_leaderboard" value="1" 
+                                       <?php checked(get_option('srt_enable_leaderboard', 1), 1); ?>>
+                                Show global leaderboard
+                            </label>
+                        </td>
+                    </tr>
+                </table>
+                
+                <?php submit_button(); ?>
+            </form>
+        </div>
+        <?php
+    }
+}
+
+// Initialize the plugin
+function pianomode_sightreading_init() {
+    new PianoMode_SightReading_Game();
+}
+add_action('init', 'pianomode_sightreading_init');
+
+// Register settings
+function pianomode_sightreading_register_settings() {
+    register_setting('srt_settings_group', 'srt_enable_guest');
+    register_setting('srt_settings_group', 'srt_default_difficulty');
+    register_setting('srt_settings_group', 'srt_enable_achievements');
+    register_setting('srt_settings_group', 'srt_enable_leaderboard');
+}
+add_action('admin_init', 'pianomode_sightreading_register_settings');

@@ -1,0 +1,1124 @@
+/**
+ * PianoMode Sight Reading Game - Chord & Note Generators
+ * File: /blocksy-child/assets/Sightreading-game/sightreading-chord-generators.js
+ * Version: 15.1.0 - PACK_5.1 Complete Implementation
+ * 
+ * FONCTIONNALITÉS PACK_5.1:
+ * - Génération de notes par difficulté (Beginner à Expert)
+ * - Placement correct sur portée Sol/Fa selon l'octave
+ * - Respect des armures et mesures 4/4
+ * - Accords, renversements, rythmes complexes
+ * - Générateurs : Random, Triads, 7ths, Progression, Position
+ */
+
+(function($) {
+    'use strict';
+
+    /**
+     * Main Sight Reading Chord Generator Class
+     */
+    class SightReadingChordGenerator {
+        constructor(config = {}) {
+            this.config = config || {};
+            
+            // Note definitions
+            this.noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+            this.accidentalNames = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+            
+            // Difficulty settings
+            this.difficulties = {
+                beginner: {
+                    noteRange: { min: 'C3', max: 'G4' },
+                    octaveRange: [3, 4],
+                    notesPerChord: 1,
+                    useAccidentals: false,
+                    rhythmTypes: ['whole', 'half', 'quarter'],
+                    keySignatures: ['C'],
+                    staffPreference: 'treble',
+                    useGrandStaff: false
+                },
+                elementary: {
+                    noteRange: { min: 'A2', max: 'C5' },
+                    octaveRange: [2, 5],
+                    notesPerChord: 1,
+                    useAccidentals: false,
+                    rhythmTypes: ['whole', 'half', 'quarter', 'eighth'],
+                    keySignatures: ['C', 'G', 'F'],
+                    staffPreference: 'both',
+                    useGrandStaff: true
+                },
+                intermediate: {
+                    noteRange: { min: 'C2', max: 'C6' },
+                    octaveRange: [2, 6],
+                    notesPerChord: 2,
+                    useAccidentals: true,
+                    rhythmTypes: ['whole', 'half', 'quarter', 'eighth', 'sixteenth', 'dotted'],
+                    keySignatures: ['C', 'G', 'D', 'A', 'F', 'Bb', 'Eb'],
+                    staffPreference: 'both',
+                    useGrandStaff: true
+                },
+                advanced: {
+                    noteRange: { min: 'A1', max: 'C7' },
+                    octaveRange: [1, 7],
+                    notesPerChord: 3,
+                    useAccidentals: true,
+                    rhythmTypes: ['whole', 'half', 'quarter', 'eighth', 'sixteenth', 'dotted', 'triplet'],
+                    keySignatures: ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb'],
+                    staffPreference: 'both',
+                    useGrandStaff: true
+                },
+                expert: {
+                    noteRange: { min: 'A0', max: 'C8' },
+                    octaveRange: [0, 8],
+                    notesPerChord: 4,
+                    useAccidentals: true,
+                    rhythmTypes: ['whole', 'half', 'quarter', 'eighth', 'sixteenth', 'thirty-second', 'dotted', 'triplet', 'quintuplet'],
+                    keySignatures: ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb'],
+                    staffPreference: 'both',
+                    useGrandStaff: true
+                }
+            };
+            
+            // Scale patterns for key signatures
+            this.scalePatterns = {
+                major: [0, 2, 4, 5, 7, 9, 11],
+                natural_minor: [0, 2, 3, 5, 7, 8, 10],
+                harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
+                melodic_minor: [0, 2, 3, 5, 7, 9, 11],
+                dorian: [0, 2, 3, 5, 7, 9, 10],
+                mixolydian: [0, 2, 4, 5, 7, 9, 10]
+            };
+            
+            // Chord patterns
+            this.chordPatterns = {
+                triad_major: [0, 4, 7],
+                triad_minor: [0, 3, 7],
+                triad_diminished: [0, 3, 6],
+                triad_augmented: [0, 4, 8],
+                seventh_major: [0, 4, 7, 11],
+                seventh_minor: [0, 3, 7, 10],
+                seventh_dominant: [0, 4, 7, 10],
+                seventh_half_diminished: [0, 3, 6, 10],
+                seventh_diminished: [0, 3, 6, 9],
+                ninth_major: [0, 4, 7, 11, 14],
+                ninth_minor: [0, 3, 7, 10, 14],
+                eleventh: [0, 4, 7, 10, 14, 17],
+                thirteenth: [0, 4, 7, 10, 14, 17, 21]
+            };
+            
+            // Chord progressions
+            this.chordProgressions = {
+                'I-V-vi-IV': [0, 7, 9, 5],
+                'ii-V-I': [2, 7, 0],
+                'I-vi-ii-V': [0, 9, 2, 7],
+                'vi-IV-I-V': [9, 5, 0, 7],
+                'I-IV-V-I': [0, 5, 7, 0],
+                'jazz_ii-V-I': [2, 7, 0],
+                'blues_I-IV-V': [0, 5, 7],
+                'modal_i-VII-VI': [0, 10, 8]
+            };
+            
+            // Rhythm patterns (in quarter note beats)
+            this.rhythmPatterns = {
+                whole: [4.0],
+                half: [2.0, 2.0],
+                quarter: [1.0, 1.0, 1.0, 1.0],
+                eighth: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+                sixteenth: [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25],
+                dotted_half: [3.0, 1.0],
+                dotted_quarter: [1.5, 0.5, 1.0, 1.0],
+                triplet_quarter: [0.67, 0.67, 0.66, 1.0, 1.0, 1.0],
+                syncopated: [0.5, 1.0, 0.5, 1.0, 1.0],
+                mixed: [1.0, 0.5, 0.5, 2.0]
+            };
+            
+            // Key signature accidentals
+            this.keySignatures = {
+                'C': [],
+                'G': ['F#'], 'D': ['F#', 'C#'], 'A': ['F#', 'C#', 'G#'], 'E': ['F#', 'C#', 'G#', 'D#'],
+                'B': ['F#', 'C#', 'G#', 'D#', 'A#'], 'F#': ['F#', 'C#', 'G#', 'D#', 'A#', 'E#'],
+                'C#': ['F#', 'C#', 'G#', 'D#', 'A#', 'E#', 'B#'],
+                'F': ['Bb'], 'Bb': ['Bb', 'Eb'], 'Eb': ['Bb', 'Eb', 'Ab'], 'Ab': ['Bb', 'Eb', 'Ab', 'Db'],
+                'Db': ['Bb', 'Eb', 'Ab', 'Db', 'Gb'], 'Gb': ['Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb'],
+                'Cb': ['Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb', 'Fb']
+            };
+        }
+        
+        /**
+         * Main generation method
+         */
+        generate(options = {}) {
+            const settings = this.parseOptions(options);
+            const notes = [];
+            
+            console.log('🎵 Generating notes with settings:', settings);
+            
+            // Choose generation method based on generator type
+            switch (settings.generatorType) {
+                case 'triads':
+                    return this.generateTriads(settings);
+                case 'sevenths':
+                    return this.generateSevenths(settings);
+                case 'progression':
+                    return this.generateProgression(settings);
+                case 'position':
+                    return this.generatePosition(settings);
+                case 'random':
+                default:
+                    return this.generateRandom(settings);
+            }
+        }
+        
+        /**
+         * Parse generation options
+         */
+        parseOptions(options) {
+            const difficulty = options.difficulty || 'elementary';
+            const difficultySettings = this.difficulties[difficulty] || this.difficulties.elementary;
+            
+            return {
+                difficulty: difficulty,
+                count: options.count || 50,
+                keySignature: options.keySignature || 'C',
+                timeSignature: options.timeSignature || '4/4',
+                noteRange: options.noteRange || difficultySettings.noteRange,
+                notesCount: options.notesCount || difficultySettings.notesPerChord,
+                generatorType: options.generatorType || 'random',
+                useAccidentals: options.useAccidentals !== undefined ? options.useAccidentals : difficultySettings.useAccidentals,
+                rhythmTypes: options.rhythmTypes || difficultySettings.rhythmTypes,
+                staffPreference: difficultySettings.staffPreference,
+                useGrandStaff: difficultySettings.useGrandStaff,
+                octaveRange: difficultySettings.octaveRange,
+                ...difficultySettings
+            };
+        }
+        
+        /**
+         * Generate random notes
+         */
+        generateRandom(settings) {
+            const notes = [];
+            let currentX = 150; // Starting X position after clef and key signature
+            let currentMeasure = 0;
+            let currentBeat = 0;
+            
+            const [numerator, denominator] = settings.timeSignature.split('/').map(Number);
+            const beatsPerMeasure = numerator;
+            
+            for (let i = 0; i < settings.count; i++) {
+                // Generate rhythm
+                const rhythm = this.selectRhythm(settings.rhythmTypes);
+                const duration = this.rhythmToDuration(rhythm);
+                
+                // Generate notes for this chord/note
+                const chordNotes = this.generateChordNotes(settings);
+                
+                // Determine staff placement for each note
+                const noteData = {
+                    id: i,
+                    notes: chordNotes,
+                    duration: rhythm,
+                    durationBeats: duration,
+                    x: currentX,
+                    measure: currentMeasure,
+                    beat: currentBeat,
+                    keySignature: settings.keySignature,
+                    accidentals: this.calculateAccidentals(chordNotes, settings.keySignature)
+                };
+                
+                notes.push(noteData);
+                
+                // Update position for next note
+                currentX += this.calculateSpacing(rhythm);
+                currentBeat += duration;
+                
+                // Check if we need a new measure
+                if (currentBeat >= beatsPerMeasure) {
+                    currentBeat = 0;
+                    currentMeasure++;
+                    currentX += 40; // Extra space between measures
+                }
+            }
+            
+            console.log(`✅ Generated ${notes.length} random notes`);
+            return notes;
+        }
+        
+        /**
+         * Generate triads
+         */
+        generateTriads(settings) {
+            const notes = [];
+            let currentX = 150;
+            let currentMeasure = 0;
+            let currentBeat = 0;
+            
+            const [numerator] = settings.timeSignature.split('/').map(Number);
+            const beatsPerMeasure = numerator;
+            
+            const triadTypes = ['triad_major', 'triad_minor', 'triad_diminished'];
+            if (settings.difficulty === 'advanced' || settings.difficulty === 'expert') {
+                triadTypes.push('triad_augmented');
+            }
+            
+            for (let i = 0; i < settings.count; i++) {
+                const triadType = this.randomChoice(triadTypes);
+                const rootNote = this.generateRootNote(settings);
+                const chordNotes = this.buildChord(rootNote, triadType, settings);
+                const rhythm = this.selectRhythm(settings.rhythmTypes);
+                const duration = this.rhythmToDuration(rhythm);
+                
+                const noteData = {
+                    id: i,
+                    notes: chordNotes,
+                    duration: rhythm,
+                    durationBeats: duration,
+                    x: currentX,
+                    measure: currentMeasure,
+                    beat: currentBeat,
+                    keySignature: settings.keySignature,
+                    chordType: triadType,
+                    rootNote: rootNote,
+                    accidentals: this.calculateAccidentals(chordNotes, settings.keySignature)
+                };
+                
+                notes.push(noteData);
+                
+                currentX += this.calculateSpacing(rhythm);
+                currentBeat += duration;
+                
+                if (currentBeat >= beatsPerMeasure) {
+                    currentBeat = 0;
+                    currentMeasure++;
+                    currentX += 40;
+                }
+            }
+            
+            console.log(`✅ Generated ${notes.length} triad notes`);
+            return notes;
+        }
+        
+        /**
+         * Generate seventh chords
+         */
+        generateSevenths(settings) {
+            const notes = [];
+            let currentX = 150;
+            let currentMeasure = 0;
+            let currentBeat = 0;
+            
+            const [numerator] = settings.timeSignature.split('/').map(Number);
+            const beatsPerMeasure = numerator;
+            
+            const seventhTypes = ['seventh_major', 'seventh_minor', 'seventh_dominant'];
+            if (settings.difficulty === 'advanced' || settings.difficulty === 'expert') {
+                seventhTypes.push('seventh_half_diminished', 'seventh_diminished');
+            }
+            if (settings.difficulty === 'expert') {
+                seventhTypes.push('ninth_major', 'ninth_minor', 'eleventh', 'thirteenth');
+            }
+            
+            for (let i = 0; i < settings.count; i++) {
+                const seventhType = this.randomChoice(seventhTypes);
+                const rootNote = this.generateRootNote(settings);
+                const chordNotes = this.buildChord(rootNote, seventhType, settings);
+                const rhythm = this.selectRhythm(settings.rhythmTypes);
+                const duration = this.rhythmToDuration(rhythm);
+                
+                const noteData = {
+                    id: i,
+                    notes: chordNotes,
+                    duration: rhythm,
+                    durationBeats: duration,
+                    x: currentX,
+                    measure: currentMeasure,
+                    beat: currentBeat,
+                    keySignature: settings.keySignature,
+                    chordType: seventhType,
+                    rootNote: rootNote,
+                    accidentals: this.calculateAccidentals(chordNotes, settings.keySignature)
+                };
+                
+                notes.push(noteData);
+                
+                currentX += this.calculateSpacing(rhythm);
+                currentBeat += duration;
+                
+                if (currentBeat >= beatsPerMeasure) {
+                    currentBeat = 0;
+                    currentMeasure++;
+                    currentX += 40;
+                }
+            }
+            
+            console.log(`✅ Generated ${notes.length} seventh chord notes`);
+            return notes;
+        }
+        
+        /**
+         * Generate chord progression
+         */
+        generateProgression(settings) {
+            const notes = [];
+            let currentX = 150;
+            let currentMeasure = 0;
+            let currentBeat = 0;
+            
+            const [numerator] = settings.timeSignature.split('/').map(Number);
+            const beatsPerMeasure = numerator;
+            
+            // Select a chord progression
+            const progressionName = this.randomChoice(Object.keys(this.chordProgressions));
+            const progression = this.chordProgressions[progressionName];
+            
+            let progressionIndex = 0;
+            
+            for (let i = 0; i < settings.count; i++) {
+                // Get current chord from progression
+                const chordDegree = progression[progressionIndex];
+                const rootNote = this.getScaleNote(settings.keySignature, chordDegree);
+                
+                // Choose chord type based on degree and difficulty
+                let chordType = 'triad_major';
+                if (settings.difficulty === 'intermediate' || settings.difficulty === 'advanced' || settings.difficulty === 'expert') {
+                    chordType = this.getChordTypeForDegree(chordDegree, settings);
+                }
+                
+                const chordNotes = this.buildChord(rootNote, chordType, settings);
+                const rhythm = this.selectRhythm(settings.rhythmTypes);
+                const duration = this.rhythmToDuration(rhythm);
+                
+                const noteData = {
+                    id: i,
+                    notes: chordNotes,
+                    duration: rhythm,
+                    durationBeats: duration,
+                    x: currentX,
+                    measure: currentMeasure,
+                    beat: currentBeat,
+                    keySignature: settings.keySignature,
+                    chordType: chordType,
+                    rootNote: rootNote,
+                    chordDegree: chordDegree,
+                    progressionName: progressionName,
+                    accidentals: this.calculateAccidentals(chordNotes, settings.keySignature)
+                };
+                
+                notes.push(noteData);
+                
+                currentX += this.calculateSpacing(rhythm);
+                currentBeat += duration;
+                
+                if (currentBeat >= beatsPerMeasure) {
+                    currentBeat = 0;
+                    currentMeasure++;
+                    currentX += 40;
+                }
+                
+                // Move to next chord in progression
+                progressionIndex = (progressionIndex + 1) % progression.length;
+            }
+            
+            console.log(`✅ Generated ${notes.length} progression notes (${progressionName})`);
+            return notes;
+        }
+        
+        /**
+         * Generate position-based notes
+         */
+        generatePosition(settings) {
+            const notes = [];
+            let currentX = 150;
+            let currentMeasure = 0;
+            let currentBeat = 0;
+            
+            const [numerator] = settings.timeSignature.split('/').map(Number);
+            const beatsPerMeasure = numerator;
+            
+            // Define hand positions
+            const positions = {
+                c_position: ['C', 'D', 'E', 'F', 'G'],
+                g_position: ['G', 'A', 'B', 'C', 'D'],
+                f_position: ['F', 'G', 'A', 'Bb', 'C']
+            };
+            
+            const positionName = this.randomChoice(Object.keys(positions));
+            const positionNotes = positions[positionName];
+            
+            for (let i = 0; i < settings.count; i++) {
+                // Generate notes within position
+                const chordNotes = [];
+                const notesToGenerate = Math.min(settings.notesCount, positionNotes.length);
+                
+                for (let j = 0; j < notesToGenerate; j++) {
+                    const noteName = this.randomChoice(positionNotes);
+                    const octave = this.randomRange(settings.octaveRange[0], settings.octaveRange[1]);
+                    chordNotes.push(noteName + octave);
+                }
+                
+                const rhythm = this.selectRhythm(settings.rhythmTypes);
+                const duration = this.rhythmToDuration(rhythm);
+                
+                const noteData = {
+                    id: i,
+                    notes: chordNotes,
+                    duration: rhythm,
+                    durationBeats: duration,
+                    x: currentX,
+                    measure: currentMeasure,
+                    beat: currentBeat,
+                    keySignature: settings.keySignature,
+                    position: positionName,
+                    accidentals: this.calculateAccidentals(chordNotes, settings.keySignature)
+                };
+                
+                notes.push(noteData);
+                
+                currentX += this.calculateSpacing(rhythm);
+                currentBeat += duration;
+                
+                if (currentBeat >= beatsPerMeasure) {
+                    currentBeat = 0;
+                    currentMeasure++;
+                    currentX += 40;
+                }
+            }
+            
+            console.log(`✅ Generated ${notes.length} position-based notes (${positionName})`);
+            return notes;
+        }
+        
+        /**
+         * Generate chord notes based on settings
+         */
+        generateChordNotes(settings) {
+            const notes = [];
+            const notesToGenerate = settings.notesCount;
+            
+            // Generate each note in the chord
+            for (let i = 0; i < notesToGenerate; i++) {
+                let note;
+                
+                if (settings.useAccidentals && Math.random() < 0.3) {
+                    // Generate note with possible accidental
+                    const noteName = this.randomChoice(this.accidentalNames);
+                    const octave = this.randomRange(settings.octaveRange[0], settings.octaveRange[1]);
+                    note = noteName + octave;
+                } else {
+                    // Generate natural note
+                    const noteName = this.randomChoice(this.noteNames);
+                    const octave = this.randomRange(settings.octaveRange[0], settings.octaveRange[1]);
+                    note = noteName + octave;
+                }
+                
+                // Apply key signature if needed
+                note = this.applyKeySignature(note, settings.keySignature);
+                
+                // Ensure note is in range
+                if (this.isNoteInRange(note, settings.noteRange)) {
+                    notes.push(note);
+                } else {
+                    // Adjust octave to fit in range
+                    const adjustedNote = this.adjustNoteToRange(note, settings.noteRange);
+                    notes.push(adjustedNote);
+                }
+            }
+            
+            // Sort notes from low to high
+            return notes.sort((a, b) => this.compareNotes(a, b));
+        }
+        
+        /**
+         * Generate a root note for chord building
+         */
+        generateRootNote(settings) {
+            const noteName = this.randomChoice(this.noteNames);
+            const octave = this.randomRange(settings.octaveRange[0], settings.octaveRange[1]);
+            let rootNote = noteName + octave;
+            
+            rootNote = this.applyKeySignature(rootNote, settings.keySignature);
+            
+            if (!this.isNoteInRange(rootNote, settings.noteRange)) {
+                rootNote = this.adjustNoteToRange(rootNote, settings.noteRange);
+            }
+            
+            return rootNote;
+        }
+        
+        /**
+         * Build chord from root note and chord type
+         */
+        buildChord(rootNote, chordType, settings) {
+            const pattern = this.chordPatterns[chordType] || [0, 4, 7];
+            const rootMidi = this.noteToMidi(rootNote);
+            const chordNotes = [];
+            
+            const maxNotes = Math.min(pattern.length, settings.notesCount);
+            
+            for (let i = 0; i < maxNotes; i++) {
+                const interval = pattern[i];
+                const chordMidi = rootMidi + interval;
+                let chordNote = this.midiToNote(chordMidi);
+                
+                // Apply key signature
+                chordNote = this.applyKeySignature(chordNote, settings.keySignature);
+                
+                // Ensure note is in range
+                if (!this.isNoteInRange(chordNote, settings.noteRange)) {
+                    chordNote = this.adjustNoteToRange(chordNote, settings.noteRange);
+                }
+                
+                chordNotes.push(chordNote);
+            }
+            
+            return chordNotes;
+        }
+        
+        /**
+         * Get scale note by degree
+         */
+        getScaleNote(keySignature, degree) {
+            const scalePattern = this.scalePatterns.major;
+            const keyRoot = this.getKeyRoot(keySignature);
+            const keyRootMidi = this.noteToMidi(keyRoot + '4');
+            
+            const scaleNoteMidi = keyRootMidi + scalePattern[degree % 7];
+            return this.midiToNote(scaleNoteMidi);
+        }
+        
+        /**
+         * Get chord type for scale degree
+         */
+        getChordTypeForDegree(degree, settings) {
+            // Major scale chord types
+            const majorScaleChords = [
+                'triad_major',     // I
+                'triad_minor',     // ii
+                'triad_minor',     // iii
+                'triad_major',     // IV
+                'triad_major',     // V
+                'triad_minor',     // vi
+                'triad_diminished' // vii°
+            ];
+            
+            const majorScale7ths = [
+                'seventh_major',         // IMaj7
+                'seventh_minor',         // ii7
+                'seventh_minor',         // iii7
+                'seventh_major',         // IVMaj7
+                'seventh_dominant',      // V7
+                'seventh_minor',         // vi7
+                'seventh_half_diminished' // vii7
+            ];
+            
+            if (settings.difficulty === 'intermediate') {
+                return majorScaleChords[degree % 7];
+            } else if (settings.difficulty === 'advanced' || settings.difficulty === 'expert') {
+                return majorScale7ths[degree % 7];
+            }
+            
+            return 'triad_major';
+        }
+        
+        /**
+         * Get key signature root note
+         */
+        getKeyRoot(keySignature) {
+            return keySignature.charAt(0);
+        }
+        
+        /**
+         * Select rhythm type based on difficulty
+         */
+        selectRhythm(rhythmTypes) {
+            return this.randomChoice(rhythmTypes);
+        }
+        
+        /**
+         * Convert rhythm to duration in beats
+         */
+        rhythmToDuration(rhythm) {
+            const durations = {
+                'whole': 4.0,
+                'half': 2.0,
+                'quarter': 1.0,
+                'eighth': 0.5,
+                'sixteenth': 0.25,
+                'thirty-second': 0.125,
+                'dotted': 1.5,
+                'triplet': 0.67
+            };
+            
+            return durations[rhythm] || 1.0;
+        }
+        
+        /**
+         * Calculate note spacing based on rhythm
+         */
+        calculateSpacing(rhythm) {
+            const baseSpacing = 80;
+            const spacingMultipliers = {
+                'whole': 2.0,
+                'half': 1.5,
+                'quarter': 1.0,
+                'eighth': 0.7,
+                'sixteenth': 0.5,
+                'thirty-second': 0.4,
+                'dotted': 1.2,
+                'triplet': 0.8
+            };
+            
+            return baseSpacing * (spacingMultipliers[rhythm] || 1.0);
+        }
+        
+        /**
+         * Apply key signature to note
+         */
+        applyKeySignature(note, keySignature) {
+            const accidentals = this.keySignatures[keySignature] || [];
+            if (accidentals.length === 0) return note;
+            
+            const noteName = note.match(/[A-G]/)[0];
+            const octave = note.match(/\d+/)[0];
+            
+            // Check if this note should have an accidental
+            for (const accidental of accidentals) {
+                if (accidental.charAt(0) === noteName) {
+                    return accidental + octave;
+                }
+            }
+            
+            return note;
+        }
+        
+        /**
+         * Calculate required accidentals for notes not in key signature
+         */
+        calculateAccidentals(notes, keySignature) {
+            const keyAccidentals = this.keySignatures[keySignature] || [];
+            const requiredAccidentals = [];
+            
+            notes.forEach(note => {
+                const noteName = note.match(/[A-G][#b]?/)[0];
+                const naturalNote = noteName.charAt(0);
+                
+                // Check if this note needs an accidental that's not in the key signature
+                if (noteName.length > 1) { // Has # or b
+                    if (!keyAccidentals.includes(noteName)) {
+                        requiredAccidentals.push({
+                            note: note,
+                            accidental: noteName.slice(1) // # or b
+                        });
+                    }
+                }
+            });
+            
+            return requiredAccidentals;
+        }
+        
+        /**
+         * Check if note is in specified range
+         */
+        isNoteInRange(note, range) {
+            const noteMidi = this.noteToMidi(note);
+            const minMidi = this.noteToMidi(range.min);
+            const maxMidi = this.noteToMidi(range.max);
+            
+            return noteMidi >= minMidi && noteMidi <= maxMidi;
+        }
+        
+        /**
+         * Adjust note to fit in range
+         */
+        adjustNoteToRange(note, range) {
+            const noteMidi = this.noteToMidi(note);
+            const minMidi = this.noteToMidi(range.min);
+            const maxMidi = this.noteToMidi(range.max);
+            
+            if (noteMidi < minMidi) {
+                // Move up octaves until in range
+                let adjustedMidi = noteMidi;
+                while (adjustedMidi < minMidi) {
+                    adjustedMidi += 12;
+                }
+                return this.midiToNote(adjustedMidi);
+            } else if (noteMidi > maxMidi) {
+                // Move down octaves until in range
+                let adjustedMidi = noteMidi;
+                while (adjustedMidi > maxMidi) {
+                    adjustedMidi -= 12;
+                }
+                return this.midiToNote(adjustedMidi);
+            }
+            
+            return note;
+        }
+        
+        /**
+         * Convert note to MIDI number
+         */
+        noteToMidi(note) {
+            const noteRegex = /([A-G])([#b]?)(\d+)/;
+            const match = note.match(noteRegex);
+            
+            if (!match) return 60; // Default to C4
+            
+            const [, noteName, accidental, octave] = match;
+            const octaveNum = parseInt(octave);
+            
+            const noteValues = {
+                'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11
+            };
+            
+            let midiValue = (octaveNum + 1) * 12 + noteValues[noteName];
+            
+            if (accidental === '#') {
+                midiValue += 1;
+            } else if (accidental === 'b') {
+                midiValue -= 1;
+            }
+            
+            return midiValue;
+        }
+        
+        /**
+         * Convert MIDI number to note
+         */
+        midiToNote(midiNote) {
+            const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const octave = Math.floor(midiNote / 12) - 1;
+            const noteName = noteNames[midiNote % 12];
+            return noteName + octave;
+        }
+        
+        /**
+         * Compare two notes for sorting
+         */
+        compareNotes(noteA, noteB) {
+            return this.noteToMidi(noteA) - this.noteToMidi(noteB);
+        }
+        
+        /**
+         * Get random choice from array
+         */
+        randomChoice(array) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+        
+        /**
+         * Get random integer in range
+         */
+        randomRange(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        
+        /**
+         * Get staff placement for note based on octave
+         */
+        getStaffForNote(note, useGrandStaff = true) {
+            if (!useGrandStaff) {
+                return 'treble'; // Single staff mode
+            }
+            
+            const octave = parseInt(note.match(/\d+/)[0]);
+            
+            // Notes C4 and above go to treble clef
+            // Notes below C4 go to bass clef
+            if (octave >= 4) {
+                return 'treble';
+            } else {
+                return 'bass';
+            }
+        }
+        
+        /**
+         * Generate exercise variations
+         */
+        generateExercise(type, options = {}) {
+            const exerciseTypes = {
+                scales: () => this.generateScaleExercise(options),
+                arpeggios: () => this.generateArpeggioExercise(options),
+                intervals: () => this.generateIntervalExercise(options),
+                chords: () => this.generateChordExercise(options),
+                rhythm: () => this.generateRhythmExercise(options)
+            };
+            
+            const generator = exerciseTypes[type];
+            if (generator) {
+                return generator();
+            }
+            
+            console.warn(`Unknown exercise type: ${type}`);
+            return this.generateRandom(options);
+        }
+        
+        /**
+         * Generate scale exercise
+         */
+        generateScaleExercise(options) {
+            const settings = this.parseOptions(options);
+            const notes = [];
+            
+            const scalePattern = this.scalePatterns.major;
+            const keyRoot = this.getKeyRoot(settings.keySignature);
+            const keyRootMidi = this.noteToMidi(keyRoot + '4');
+            
+            let currentX = 150;
+            let direction = 1; // 1 for ascending, -1 for descending
+            let scaleIndex = 0;
+            
+            for (let i = 0; i < settings.count; i++) {
+                const scaleNoteMidi = keyRootMidi + scalePattern[scaleIndex];
+                const scaleNote = this.midiToNote(scaleNoteMidi);
+                
+                const noteData = {
+                    id: i,
+                    notes: [scaleNote],
+                    duration: 'quarter',
+                    durationBeats: 1.0,
+                    x: currentX,
+                    measure: Math.floor(i / 4),
+                    beat: i % 4,
+                    keySignature: settings.keySignature,
+                    exerciseType: 'scale',
+                    scaleIndex: scaleIndex,
+                    direction: direction
+                };
+                
+                notes.push(noteData);
+                
+                currentX += 80;
+                scaleIndex += direction;
+                
+                // Reverse direction at scale ends
+                if (scaleIndex >= scalePattern.length) {
+                    scaleIndex = scalePattern.length - 2;
+                    direction = -1;
+                } else if (scaleIndex < 0) {
+                    scaleIndex = 1;
+                    direction = 1;
+                }
+            }
+            
+            console.log(`✅ Generated scale exercise in ${settings.keySignature}`);
+            return notes;
+        }
+        
+        /**
+         * Generate arpeggio exercise
+         */
+        generateArpeggioExercise(options) {
+            const settings = this.parseOptions(options);
+            const notes = [];
+            
+            const chordPattern = this.chordPatterns.triad_major;
+            const keyRoot = this.getKeyRoot(settings.keySignature);
+            const keyRootMidi = this.noteToMidi(keyRoot + '4');
+            
+            let currentX = 150;
+            let arpeggioIndex = 0;
+            let direction = 1;
+            
+            for (let i = 0; i < settings.count; i++) {
+                const arpeggioNoteMidi = keyRootMidi + chordPattern[arpeggioIndex];
+                const arpeggioNote = this.midiToNote(arpeggioNoteMidi);
+                
+                const noteData = {
+                    id: i,
+                    notes: [arpeggioNote],
+                    duration: 'quarter',
+                    durationBeats: 1.0,
+                    x: currentX,
+                    measure: Math.floor(i / 4),
+                    beat: i % 4,
+                    keySignature: settings.keySignature,
+                    exerciseType: 'arpeggio',
+                    arpeggioIndex: arpeggioIndex,
+                    direction: direction
+                };
+                
+                notes.push(noteData);
+                
+                currentX += 80;
+                arpeggioIndex += direction;
+                
+                // Reverse direction at arpeggio ends
+                if (arpeggioIndex >= chordPattern.length) {
+                    arpeggioIndex = chordPattern.length - 2;
+                    direction = -1;
+                } else if (arpeggioIndex < 0) {
+                    arpeggioIndex = 1;
+                    direction = 1;
+                }
+            }
+            
+            console.log(`✅ Generated arpeggio exercise in ${settings.keySignature}`);
+            return notes;
+        }
+        
+        /**
+         * Generate interval exercise
+         */
+        generateIntervalExercise(options) {
+            const settings = this.parseOptions(options);
+            const notes = [];
+            
+            const intervals = [2, 3, 4, 5, 7, 9]; // Major 2nd, minor 3rd, Major 3rd, 4th, 5th, 6th
+            let currentX = 150;
+            
+            for (let i = 0; i < settings.count; i += 2) {
+                const rootNote = this.generateRootNote(settings);
+                const interval = this.randomChoice(intervals);
+                const rootMidi = this.noteToMidi(rootNote);
+                const intervalNote = this.midiToNote(rootMidi + interval);
+                
+                // Root note
+                const rootNoteData = {
+                    id: i,
+                    notes: [rootNote],
+                    duration: 'quarter',
+                    durationBeats: 1.0,
+                    x: currentX,
+                    measure: Math.floor(i / 4),
+                    beat: i % 4,
+                    keySignature: settings.keySignature,
+                    exerciseType: 'interval',
+                    intervalType: 'root'
+                };
+                
+                notes.push(rootNoteData);
+                currentX += 80;
+                
+                // Interval note
+                if (i + 1 < settings.count) {
+                    const intervalNoteData = {
+                        id: i + 1,
+                        notes: [intervalNote],
+                        duration: 'quarter',
+                        durationBeats: 1.0,
+                        x: currentX,
+                        measure: Math.floor((i + 1) / 4),
+                        beat: (i + 1) % 4,
+                        keySignature: settings.keySignature,
+                        exerciseType: 'interval',
+                        intervalType: 'interval',
+                        intervalSize: interval
+                    };
+                    
+                    notes.push(intervalNoteData);
+                    currentX += 80;
+                }
+            }
+            
+            console.log(`✅ Generated interval exercise`);
+            return notes;
+        }
+        
+        /**
+         * Generate chord exercise
+         */
+        generateChordExercise(options) {
+            const settings = this.parseOptions(options);
+            const notes = [];
+            
+            const chordTypes = ['triad_major', 'triad_minor', 'seventh_major', 'seventh_minor'];
+            let currentX = 150;
+            
+            for (let i = 0; i < settings.count; i++) {
+                const rootNote = this.generateRootNote(settings);
+                const chordType = this.randomChoice(chordTypes);
+                const chordNotes = this.buildChord(rootNote, chordType, settings);
+                
+                const noteData = {
+                    id: i,
+                    notes: chordNotes,
+                    duration: 'whole',
+                    durationBeats: 4.0,
+                    x: currentX,
+                    measure: i,
+                    beat: 0,
+                    keySignature: settings.keySignature,
+                    exerciseType: 'chord',
+                    chordType: chordType,
+                    rootNote: rootNote
+                };
+                
+                notes.push(noteData);
+                currentX += 160; // More space for chords
+            }
+            
+            console.log(`✅ Generated chord exercise`);
+            return notes;
+        }
+        
+        /**
+         * Generate rhythm exercise
+         */
+        generateRhythmExercise(options) {
+            const settings = this.parseOptions(options);
+            const notes = [];
+            
+            const rhythmPattern = this.randomChoice(Object.keys(this.rhythmPatterns));
+            const rhythms = this.rhythmPatterns[rhythmPattern];
+            
+            let currentX = 150;
+            let currentBeat = 0;
+            let rhythmIndex = 0;
+            
+            for (let i = 0; i < settings.count; i++) {
+                const note = 'C4'; // Fixed pitch for rhythm focus
+                const rhythm = rhythms[rhythmIndex % rhythms.length];
+                
+                const noteData = {
+                    id: i,
+                    notes: [note],
+                    duration: this.durationToRhythmName(rhythm),
+                    durationBeats: rhythm,
+                    x: currentX,
+                    measure: Math.floor(currentBeat / 4),
+                    beat: currentBeat % 4,
+                    keySignature: settings.keySignature,
+                    exerciseType: 'rhythm',
+                    rhythmPattern: rhythmPattern,
+                    rhythmValue: rhythm
+                };
+                
+                notes.push(noteData);
+                
+                currentX += this.calculateSpacing(noteData.duration);
+                currentBeat += rhythm;
+                rhythmIndex++;
+            }
+            
+            console.log(`✅ Generated rhythm exercise (${rhythmPattern})`);
+            return notes;
+        }
+        
+        /**
+         * Convert duration to rhythm name
+         */
+        durationToRhythmName(duration) {
+            const rhythmNames = {
+                4.0: 'whole',
+                2.0: 'half',
+                1.0: 'quarter',
+                0.5: 'eighth',
+                0.25: 'sixteenth',
+                0.125: 'thirty-second',
+                1.5: 'dotted',
+                0.67: 'triplet'
+            };
+            
+            return rhythmNames[duration] || 'quarter';
+        }
+    }
+    
+    // Export for use in other modules
+    window.SightReadingChordGenerator = SightReadingChordGenerator;
+    
+    // jQuery ready initialization
+    $(document).ready(function() {
+        console.log('🎵 Sight Reading Chord Generator loaded');
+    });
+    
+})(jQuery);

@@ -1,0 +1,934 @@
+<?php
+/**
+ * PianoMode Sight Reading Game - WordPress Integration
+ * File: /blocksy-child/assets/Sightreading-game/sightreading-main.php
+ * Version: 11.0.0 - Complete Rewrite Based on PACK_4 with Full Improvements
+ * 
+ * @package PianoModeSightReading
+ * @author PianoMode Development Team
+ * @license GPL-2.0+
+ * 
+ * Complete sight reading application integrated into WordPress via shortcode
+ * Based on PACK_4 foundation with all requested improvements:
+ * 
+ * NEW FEATURES IMPLEMENTED:
+ * - Full-width containers (50px black band, toolbars, content)
+ * - Two-level toolbar system (main + control bar)
+ * - Single tempo control (Speed controls Tempo, unified)
+ * - Piano integration from page-virtual-piano.php
+ * - Staff improvements (proper clipping, brackets, golden notes)
+ * - Panel configuration with proper note name options
+ * - MIDI settings at the bottom of panel
+ * - Custom piano sound upload support
+ * - Only Sight Reading mode (no Play Along, Flash Cards, etc.)
+ * - Gold playhead spanning both staves
+ * - Improved chord generation for intermediate+ levels
+ * - Account integration for statistics
+ */
+
+// Security check
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class PianoMode_SightReading_Game {
+    
+    private $version = '11.0.0';
+    private $assets_loaded = false;
+    
+    // PianoMode color palette
+    private $colors = array(
+        'gold' => '#C59D3A',
+        'gold_light' => '#D4A942', 
+        'gold_dark' => '#B08A2E',
+        'black' => '#0B0B0B',
+        'white' => '#FFFFFF',
+        'success' => '#4CAF50',
+        'error' => '#F44336'
+    );
+    
+    // Notation systems for note names
+    private $notation_systems = array(
+        'international' => array(
+            'C' => 'C', 'C#' => 'C#', 'Db' => 'Db', 'D' => 'D', 'D#' => 'D#', 'Eb' => 'Eb',
+            'E' => 'E', 'F' => 'F', 'F#' => 'F#', 'Gb' => 'Gb', 'G' => 'G', 'G#' => 'G#',
+            'Ab' => 'Ab', 'A' => 'A', 'A#' => 'A#', 'Bb' => 'Bb', 'B' => 'B'
+        ),
+        'latin' => array(
+            'C' => 'Do', 'C#' => 'Do#', 'Db' => 'Réb', 'D' => 'Ré', 'D#' => 'Ré#', 'Eb' => 'Mib',
+            'E' => 'Mi', 'F' => 'Fa', 'F#' => 'Fa#', 'Gb' => 'Solb', 'G' => 'Sol', 'G#' => 'Sol#',
+            'Ab' => 'Lab', 'A' => 'La', 'A#' => 'La#', 'Bb' => 'Sib', 'B' => 'Si'
+        )
+    );
+    
+    // Achievement system
+    private $achievements = array(
+        'first_note' => array('name' => 'First Note', 'description' => 'Play your first note correctly'),
+        'streak_10' => array('name' => 'Perfect Ten', 'description' => 'Get 10 notes in a row'),
+        'accuracy_95' => array('name' => 'Sharp Eye', 'description' => 'Achieve 95% accuracy'),
+        'session_100' => array('name' => 'Century Club', 'description' => 'Play 100 notes in one session'),
+        'speed_demon' => array('name' => 'Speed Demon', 'description' => 'Play at 180 BPM for 1 minute')
+    );
+    
+    // Game modes (Only Sight Reading)
+    private $game_modes = array(
+        'sight_reading' => array(
+            'name' => 'Sight Reading',
+            'description' => 'Practice reading musical notation',
+            'modes' => array('wait', 'scroll')
+        )
+    );
+    
+    public function __construct() {
+        add_action('init', array($this, 'init'));
+        add_action('wp_enqueue_scripts', array($this, 'maybe_enqueue_assets'), 20);
+        add_shortcode('sight_reading', array($this, 'render_shortcode'));
+        
+        // AJAX handlers for session saving
+        add_action('wp_ajax_srt_save_session', array($this, 'ajax_save_session'));
+        add_action('wp_ajax_nopriv_srt_save_session', array($this, 'ajax_save_session'));
+        
+        // AJAX handlers for custom sound upload
+        add_action('wp_ajax_srt_upload_sound', array($this, 'ajax_upload_sound'));
+        add_action('wp_ajax_nopriv_srt_upload_sound', array($this, 'ajax_upload_sound'));
+    }
+    
+    public function init() {
+        // Load text domain for translations
+        load_textdomain('sight-reading', WP_LANG_DIR . '/sight-reading/sight-reading-' . get_locale() . '.mo');
+        
+        // Create custom uploads directory for piano sounds
+        $upload_dir = wp_upload_dir();
+        $piano_sounds_dir = $upload_dir['basedir'] . '/piano-sounds';
+        if (!file_exists($piano_sounds_dir)) {
+            wp_mkdir_p($piano_sounds_dir);
+        }
+    }
+    
+    /**
+     * Render the sight reading game shortcode
+     * 
+     * @param array $atts Shortcode attributes
+     * @return string HTML output
+     */
+    public function render_shortcode($atts) {
+        // Force asset loading
+        $this->assets_loaded = true;
+        $this->enqueue_assets();
+        
+        // Validate and sanitize attributes
+        $atts = $this->validate_shortcode_atts($atts);
+        
+        // Generate unique container ID
+        static $instance = 0;
+        $instance++;
+        $container_id = 'srt-container-' . $instance;
+        
+        // Start output buffering
+        ob_start();
+        ?>
+        
+        <div class="srt-wrapper" id="<?php echo esc_attr($container_id); ?>" 
+             data-mode="<?php echo esc_attr($atts['mode']); ?>"
+             data-staff="<?php echo esc_attr($atts['staff']); ?>"
+             data-key="<?php echo esc_attr($atts['key']); ?>"
+             data-difficulty="<?php echo esc_attr($atts['difficulty']); ?>"
+             data-tempo="<?php echo esc_attr($atts['tempo']); ?>"
+             data-show-piano="<?php echo esc_attr($atts['show_piano']); ?>"
+             data-note-names="<?php echo esc_attr($atts['note_names']); ?>"
+             data-notation="<?php echo esc_attr($atts['notation']); ?>"
+             data-fullscreen="<?php echo esc_attr($atts['fullscreen']); ?>"
+             data-width="<?php echo esc_attr($atts['width']); ?>"
+             data-height="<?php echo esc_attr($atts['height']); ?>"
+             class="<?php echo esc_attr($atts['class']); ?>">
+            
+            <!-- 50px Black Band for header offset -->
+            <div class="srt-topband"></div>
+            
+            <!-- Main Toolbar -->
+            <header class="srt-toolbar">
+                <div class="srt-brand">
+                    <img class="srt-logo" src="https://pianomode.com/wp-content/uploads/2025/05/Logo-def_NOIR.png" alt="PianoMode" />
+                    <h1 class="srt-title">PianoMode — Sight Reading</h1>
+                </div>
+                <nav class="srt-actions">
+                    <button class="srt-btn srt-play" aria-label="<?php esc_attr_e('Play', 'sight-reading'); ?>">
+                        <span class="srt-icon-play" aria-hidden="true"></span>
+                        <?php esc_html_e('Play', 'sight-reading'); ?>
+                    </button>
+                    <button class="srt-btn srt-stop" aria-label="<?php esc_attr_e('Stop', 'sight-reading'); ?>">
+                        <span class="srt-icon-stop" aria-hidden="true"></span>
+                        <?php esc_html_e('Stop', 'sight-reading'); ?>
+                    </button>
+                    <button class="srt-btn srt-reset" aria-label="<?php esc_attr_e('Reset', 'sight-reading'); ?>">
+                        <span class="srt-icon-reset" aria-hidden="true"></span>
+                        <?php esc_html_e('Reset', 'sight-reading'); ?>
+                    </button>
+                    <button class="srt-btn srt-settings" aria-label="<?php esc_attr_e('Settings', 'sight-reading'); ?>">
+                        <span class="srt-icon-settings" aria-hidden="true"></span>
+                        <?php esc_html_e('Settings', 'sight-reading'); ?>
+                    </button>
+                </nav>
+                
+                <!-- Statistics HUD -->
+                <div class="srt-hud">
+                    <div class="srt-stat">
+                        <span class="srt-stat-value" id="srt-hits">0</span>
+                        <span class="srt-stat-label"><?php esc_html_e('Hits', 'sight-reading'); ?></span>
+                    </div>
+                    <div class="srt-stat">
+                        <span class="srt-stat-value" id="srt-misses">0</span>
+                        <span class="srt-stat-label"><?php esc_html_e('Misses', 'sight-reading'); ?></span>
+                    </div>
+                    <div class="srt-stat">
+                        <span class="srt-stat-value" id="srt-accuracy">100%</span>
+                        <span class="srt-stat-label"><?php esc_html_e('Accuracy', 'sight-reading'); ?></span>
+                    </div>
+                    <div class="srt-stat">
+                        <span class="srt-stat-value" id="srt-streak">0</span>
+                        <span class="srt-stat-label"><?php esc_html_e('Streak', 'sight-reading'); ?></span>
+                    </div>
+                    <div class="srt-stat">
+                        <span class="srt-stat-value" id="srt-timer">0:00</span>
+                        <span class="srt-stat-label"><?php esc_html_e('Time', 'sight-reading'); ?></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Control Bar (Second Toolbar) -->
+            <div class="srt-controlbar">
+                <div class="srt-control srt-mode-toggle">
+                    <label><?php esc_html_e('Mode', 'sight-reading'); ?></label>
+                    <button data-mode="wait" class="srt-chip active" aria-pressed="true">
+                        <?php esc_html_e('Wait', 'sight-reading'); ?>
+                    </button>
+                    <button data-mode="scroll" class="srt-chip" aria-pressed="false">
+                        <?php esc_html_e('Scroll', 'sight-reading'); ?>
+                    </button>
+                </div>
+
+                <div class="srt-control srt-tempo">
+                    <label for="srt-tempo"><?php esc_html_e('Speed / Tempo', 'sight-reading'); ?></label>
+                    <input type="range" min="30" max="240" value="<?php echo esc_attr($atts['tempo']); ?>" id="srt-tempo" aria-describedby="srt-bpm">
+                    <span class="srt-bpm" id="srt-bpm"><?php echo esc_html($atts['tempo']); ?> BPM</span>
+                </div>
+
+                <div class="srt-control srt-metronome">
+                    <label><?php esc_html_e('Metronome', 'sight-reading'); ?></label>
+                    <button class="srt-chip srt-metro-toggle" aria-label="<?php esc_attr_e('Toggle metronome', 'sight-reading'); ?>" aria-pressed="false">
+                        <span class="srt-icon-metronome" aria-hidden="true">♪</span>
+                    </button>
+                </div>
+
+                <div class="srt-control srt-difficulty">
+                    <label for="srt-difficulty"><?php esc_html_e('Difficulty', 'sight-reading'); ?></label>
+                    <select id="srt-difficulty">
+                        <option value="beginner" <?php selected($atts['difficulty'], 'beginner'); ?>><?php esc_html_e('Beginner', 'sight-reading'); ?></option>
+                        <option value="intermediate" <?php selected($atts['difficulty'], 'intermediate'); ?>><?php esc_html_e('Intermediate', 'sight-reading'); ?></option>
+                        <option value="advanced" <?php selected($atts['difficulty'], 'advanced'); ?>><?php esc_html_e('Advanced', 'sight-reading'); ?></option>
+                        <option value="expert" <?php selected($atts['difficulty'], 'expert'); ?>><?php esc_html_e('Expert', 'sight-reading'); ?></option>
+                    </select>
+                </div>
+
+                <div class="srt-control srt-midi">
+                    <button class="srt-btn srt-midi-connect" aria-label="<?php esc_attr_e('Connect MIDI keyboard', 'sight-reading'); ?>">
+                        <span class="srt-icon-midi" aria-hidden="true">🎹</span>
+                        <?php esc_html_e('Connect MIDI Keyboard', 'sight-reading'); ?>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Settings Panel (Collapsible from left) -->
+            <aside class="srt-panel" aria-label="<?php esc_attr_e('Settings', 'sight-reading'); ?>" aria-hidden="true">
+                <button class="srt-panel-close" aria-label="<?php esc_attr_e('Close settings', 'sight-reading'); ?>">×</button>
+                <div class="srt-panel-content">
+                    
+                    <!-- Display Settings -->
+                    <section class="srt-panel-section">
+                        <h4><?php esc_html_e('Display', 'sight-reading'); ?></h4>
+                        <div class="srt-radio-group">
+                            <label class="srt-check">
+                                <input type="radio" name="note-names" value="latin">
+                                <?php esc_html_e('Show note names', 'sight-reading'); ?> <small>(<?php esc_html_e('latin notation', 'sight-reading'); ?>)</small>
+                            </label>
+                            <label class="srt-check">
+                                <input type="radio" name="note-names" value="international">
+                                <?php esc_html_e('Show note names', 'sight-reading'); ?> <small>(<?php esc_html_e('international notation', 'sight-reading'); ?>)</small>
+                            </label>
+                            <label class="srt-check">
+                                <input type="radio" name="note-names" value="none" checked>
+                                <?php esc_html_e('Hide note names', 'sight-reading'); ?>
+                            </label>
+                        </div>
+                    </section>
+
+                    <!-- Staff & Key Settings -->
+                    <section class="srt-panel-section">
+                        <h4><?php esc_html_e('Staff & Key', 'sight-reading'); ?></h4>
+                        <div class="srt-radio-row" id="srt-staff">
+                            <label class="srt-check">
+                                <input type="radio" name="staff" value="treble">
+                                <?php esc_html_e('Treble', 'sight-reading'); ?>
+                            </label>
+                            <label class="srt-check">
+                                <input type="radio" name="staff" value="bass">
+                                <?php esc_html_e('Bass', 'sight-reading'); ?>
+                            </label>
+                            <label class="srt-check">
+                                <input type="radio" name="staff" value="grand" checked>
+                                <?php esc_html_e('Grand', 'sight-reading'); ?>
+                            </label>
+                        </div>
+                        <label for="srt-key"><?php esc_html_e('Key Signature', 'sight-reading'); ?></label>
+                        <select id="srt-key">
+                            <option value="C" <?php selected($atts['key'], 'C'); ?>>C major</option>
+                            <option value="G" <?php selected($atts['key'], 'G'); ?>>G major</option>
+                            <option value="D" <?php selected($atts['key'], 'D'); ?>>D major</option>
+                            <option value="A" <?php selected($atts['key'], 'A'); ?>>A major</option>
+                            <option value="E" <?php selected($atts['key'], 'E'); ?>>E major</option>
+                            <option value="F" <?php selected($atts['key'], 'F'); ?>>F major</option>
+                            <option value="Bb" <?php selected($atts['key'], 'Bb'); ?>>B♭ major</option>
+                            <option value="Eb" <?php selected($atts['key'], 'Eb'); ?>>E♭ major</option>
+                        </select>
+                    </section>
+
+                    <!-- Generator Settings -->
+                    <section class="srt-panel-section">
+                        <h4><?php esc_html_e('Generator', 'sight-reading'); ?></h4>
+                        <div class="srt-input-group">
+                            <label for="srt-notes-per-col"><?php esc_html_e('Notes per column', 'sight-reading'); ?></label>
+                            <input type="range" min="1" max="5" value="1" id="srt-notes-per-col">
+                            <span class="srt-slider-value">1</span>
+                        </div>
+                        <div class="srt-input-group">
+                            <label for="srt-smoothness"><?php esc_html_e('Smoothness', 'sight-reading'); ?></label>
+                            <input type="range" min="1" max="5" value="3" id="srt-smoothness">
+                            <span class="srt-slider-value">3</span>
+                        </div>
+                        <label class="srt-check">
+                            <input type="checkbox" id="srt-chord-based">
+                            <?php esc_html_e('Chord-based columns', 'sight-reading'); ?>
+                        </label>
+                    </section>
+
+                    <!-- Piano Sound Settings -->
+                    <section class="srt-panel-section">
+                        <h4><?php esc_html_e('Piano Sound', 'sight-reading'); ?></h4>
+                        <div class="srt-input-group">
+                            <label for="srt-piano-sound"><?php esc_html_e('Sound Library', 'sight-reading'); ?></label>
+                            <select id="srt-piano-sound">
+                                <option value="salamander"><?php esc_html_e('Salamander Grand Piano', 'sight-reading'); ?></option>
+                                <option value="electric"><?php esc_html_e('Electric Piano', 'sight-reading'); ?></option>
+                                <option value="organ"><?php esc_html_e('Organ', 'sight-reading'); ?></option>
+                                <option value="synth"><?php esc_html_e('Synth', 'sight-reading'); ?></option>
+                                <option value="custom"><?php esc_html_e('Upload Custom Sound', 'sight-reading'); ?></option>
+                            </select>
+                        </div>
+                        
+                        <!-- Custom Sound Upload -->
+                        <div class="srt-upload-section" id="srt-upload-section" style="display: none;">
+                            <label for="srt-upload-sound"><?php esc_html_e('Upload Piano Samples', 'sight-reading'); ?></label>
+                            <input type="file" id="srt-upload-sound" accept=".wav,.mp3,.ogg,.zip,.sfz,.sf2" multiple>
+                            <small class="srt-help-text">
+                                <?php esc_html_e('Upload WAV/MP3/OGG samples, ZIP files, or SFZ/SF2 soundfonts. VST plugins are not supported in browsers - convert to SFZ/SF2 format.', 'sight-reading'); ?>
+                            </small>
+                        </div>
+                        
+                        <div class="srt-input-group">
+                            <label for="srt-volume"><?php esc_html_e('Volume', 'sight-reading'); ?></label>
+                            <input type="range" min="0" max="100" value="80" id="srt-volume">
+                            <span class="srt-slider-value">80%</span>
+                        </div>
+                    </section>
+
+                    <!-- Preferences -->
+                    <section class="srt-panel-section">
+                        <h4><?php esc_html_e('Preferences', 'sight-reading'); ?></h4>
+                        <button class="srt-btn srt-pref-reset"><?php esc_html_e('Reset to defaults', 'sight-reading'); ?></button>
+                    </section>
+
+                    <!-- MIDI Settings (At the bottom) -->
+                    <section class="srt-panel-section srt-midi-section">
+                        <h4><?php esc_html_e('MIDI Settings', 'sight-reading'); ?></h4>
+                        <div class="srt-input-group">
+                            <label for="srt-midi-device"><?php esc_html_e('Device', 'sight-reading'); ?></label>
+                            <select id="srt-midi-device">
+                                <option value=""><?php esc_html_e('No device connected', 'sight-reading'); ?></option>
+                            </select>
+                        </div>
+                        <div class="srt-input-group">
+                            <label for="srt-midi-channel"><?php esc_html_e('Channel', 'sight-reading'); ?></label>
+                            <select id="srt-midi-channel">
+                                <option value="omni"><?php esc_html_e('Omni', 'sight-reading'); ?></option>
+                                <?php for ($i = 1; $i <= 16; $i++): ?>
+                                    <option value="<?php echo $i; ?>"><?php echo $i; ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                        <div class="srt-input-group">
+                            <label for="srt-midi-transpose"><?php esc_html_e('Transpose', 'sight-reading'); ?></label>
+                            <input type="range" min="-12" max="12" value="0" id="srt-midi-transpose">
+                            <span class="srt-slider-value">0</span>
+                        </div>
+                        <div class="srt-input-group">
+                            <label for="srt-vel-curve"><?php esc_html_e('Velocity curve', 'sight-reading'); ?></label>
+                            <select id="srt-vel-curve">
+                                <option value="linear"><?php esc_html_e('Linear', 'sight-reading'); ?></option>
+                                <option value="soft"><?php esc_html_e('Soft', 'sight-reading'); ?></option>
+                                <option value="hard"><?php esc_html_e('Hard', 'sight-reading'); ?></option>
+                                <option value="exponential"><?php esc_html_e('Exponential', 'sight-reading'); ?></option>
+                            </select>
+                        </div>
+                        <label class="srt-check">
+                            <input type="checkbox" id="srt-midi-sustain">
+                            <?php esc_html_e('Sustain (CC64)', 'sight-reading'); ?>
+                        </label>
+                    </section>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="srt-main">
+                <div class="srt-content">
+                    <!-- Staff Notation Stage -->
+                    <div class="srt-stage">
+                        <svg class="srt-score" viewBox="0 0 1200 300" aria-label="<?php esc_attr_e('Musical score', 'sight-reading'); ?>">
+                            <!-- SVG content will be generated by JavaScript -->
+                        </svg>
+                        <!-- Gold playhead spanning BOTH staves -->
+                        <div class="srt-playhead" aria-hidden="true"></div>
+                    </div>
+
+                    <!-- Virtual Piano Section -->
+                    <?php if ($atts['show_piano'] === 'true'): ?>
+                    <section class="srt-piano-section" id="srtPianoContainer">
+                        
+                        <div class="srt-piano-keyboard-container">
+                            <div class="srt-piano-keyboard" id="srtPianoKeyboard">
+                                <!-- Piano keys will be generated by JavaScript -->
+                            </div>
+                        </div>
+                        
+                        <div class="srt-piano-info">
+                            Choose your piano sound • Use the inhouse piano sound or upload your own • Play using the keyboard (A-S-D-F-G-H-J-K-L), clicking keys or connecting your MIDI keyboard • Hold ALT for sustain pedal
+                        </div>
+                        
+                        <div class="srt-piano-bottom-controls">
+                            <div class="srt-piano-controls-left">
+                                <div class="srt-range-control">
+                                    <span class="srt-control-label">RANGE:</span>
+                                    <button class="srt-octave-btn active" data-octaves="5">5 Octaves</button>
+                                    <button class="srt-octave-btn" data-octaves="7">7 Octaves</button>
+                                </div>
+                                
+                                <div class="srt-sound-control">
+                                    <span class="srt-control-label">SOUND:</span>
+                                    <select id="srt-piano-sound" class="srt-sound-selector">
+                                        <option value="salamander">Grand Piano</option>
+                                        <option value="electric">Electric Piano</option>
+                                        <option value="organ">Organ</option>
+                                        <option value="synth">Synth</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="srt-piano-controls-right">
+                                <div class="srt-notation-control">
+                                    <span class="srt-control-label">NOTE NAMES:</span>
+                                    <div class="srt-notation-toggle" id="srt-notation-toggle">
+                                        <button class="srt-notation-btn active" data-notation="international">A-B-C</button>
+                                        <button class="srt-notation-btn" data-notation="latin">Do-Ré-Mi</button>
+                                        <button class="srt-notation-btn" data-notation="none">None</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    </section>
+                    <?php endif; ?>
+
+            <!-- Popups and Modals -->
+            <div class="srt-popups">
+                <!-- Error Banner -->
+                <div class="srt-error" role="alert" aria-hidden="true">
+                    <span class="srt-error-icon">⚠️</span>
+                    <span class="srt-error-message"></span>
+                    <button class="srt-error-close" aria-label="<?php esc_attr_e('Close error', 'sight-reading'); ?>">×</button>
+                </div>
+
+                <!-- Rotation Notice for Mobile -->
+                <div class="srt-rotate" aria-hidden="true">
+                    <div class="srt-rotate-content">
+                        <span class="srt-rotate-icon">📱</span>
+                        <p><?php esc_html_e('To play, please rotate your screen.', 'sight-reading'); ?></p>
+                    </div>
+                </div>
+
+                <!-- Upsell Modal (for guests only, shown once after 5 minutes) -->
+                <?php if (!is_user_logged_in()): ?>
+                <div class="srt-upsell" aria-hidden="true" aria-labelledby="srt-upsell-title" role="dialog">
+                    <div class="srt-upsell-content">
+                        <h3 id="srt-upsell-title"><?php esc_html_e('Save Your Progress', 'sight-reading'); ?></h3>
+                        <p><?php esc_html_e('Create a free account to save your progress, track achievements, and sync across devices.', 'sight-reading'); ?></p>
+                        <div class="srt-upsell-actions">
+                            <a class="srt-btn" href="<?php echo esc_url(wp_registration_url()); ?>"><?php esc_html_e('Create account', 'sight-reading'); ?></a>
+                            <button class="srt-btn srt-ghost srt-upsell-dismiss"><?php esc_html_e('Maybe later', 'sight-reading'); ?></button>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Achievement Popup -->
+                <div class="srt-achievement-popup" aria-hidden="true" role="dialog">
+                    <div class="srt-achievement-content">
+                        <span class="srt-achievement-icon">🏆</span>
+                        <h4 class="srt-achievement-title"></h4>
+                        <p class="srt-achievement-description"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Skeleton -->
+            <div class="srt-loading" aria-hidden="true">
+                <div class="srt-loading-content">
+                    <div class="srt-loading-spinner"></div>
+                    <p><?php esc_html_e('Loading Sight Reading Game...', 'sight-reading'); ?></p>
+                </div>
+            </div>
+
+        </div>
+        
+        <?php
+        return ob_get_clean();
+    }
+    
+    /**
+     * Validate and sanitize shortcode attributes
+     * 
+     * @param array $atts Raw shortcode attributes
+     * @return array Validated attributes
+     */
+    private function validate_shortcode_atts($atts) {
+        $defaults = array(
+            'mode' => 'wait',              // wait|scroll
+            'staff' => 'grand',             // treble|bass|grand
+            'key' => 'C',                   // C|G|D|A|E|B|F|Bb|Eb|Ab|Db|Gb
+            'tempo' => '120',               // 30-240
+            'difficulty' => 'beginner',     // beginner|intermediate|advanced|expert
+            'generator' => 'random',        // random|triads|progressions|scales|intervals
+            'show_piano' => 'true',         // true|false
+            'note_names' => 'none',         // latin|international|none
+            'notation' => 'international',  // international|latin
+            'fullscreen' => 'false',        // true|false
+            'width' => '100%',              // CSS width
+            'height' => '720px',            // CSS height
+            'class' => ''                   // Additional CSS classes
+        );
+        
+        $atts = shortcode_atts($defaults, $atts, 'sight_reading');
+        
+        // Validate mode
+        if (!in_array($atts['mode'], array('wait', 'scroll'))) {
+            $atts['mode'] = 'wait';
+        }
+        
+        // Validate staff
+        if (!in_array($atts['staff'], array('treble', 'bass', 'grand'))) {
+            $atts['staff'] = 'grand';
+        }
+        
+        // Validate key signature
+        $valid_keys = array('C', 'G', 'D', 'A', 'E', 'B', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb');
+        if (!in_array($atts['key'], $valid_keys)) {
+            $atts['key'] = 'C';
+        }
+        
+        // Validate tempo
+        $atts['tempo'] = max(30, min(240, intval($atts['tempo'])));
+        
+        // Validate difficulty
+        if (!in_array($atts['difficulty'], array('beginner', 'intermediate', 'advanced', 'expert'))) {
+            $atts['difficulty'] = 'beginner';
+        }
+        
+        // Validate generator
+        if (!in_array($atts['generator'], array('random', 'triads', 'progressions', 'scales', 'intervals'))) {
+            $atts['generator'] = 'random';
+        }
+        
+        // Validate note names
+        if (!in_array($atts['note_names'], array('latin', 'international', 'none'))) {
+            $atts['note_names'] = 'none';
+        }
+        
+        // Validate notation system
+        if (!array_key_exists($atts['notation'], $this->notation_systems)) {
+            $atts['notation'] = 'international';
+        }
+        
+        // Validate boolean values
+        $atts['show_piano'] = in_array($atts['show_piano'], array('true', '1', 'yes', 'on')) ? 'true' : 'false';
+        $atts['fullscreen'] = in_array($atts['fullscreen'], array('true', '1', 'yes', 'on')) ? 'true' : 'false';
+        
+        // Sanitize dimensions
+        $atts['width'] = sanitize_text_field($atts['width']);
+        $atts['height'] = sanitize_text_field($atts['height']);
+        $atts['class'] = sanitize_html_class($atts['class']);
+        
+        return $atts;
+    }
+    
+    /**
+     * Conditionally enqueue assets
+     */
+    public function maybe_enqueue_assets() {
+        global $post;
+        
+        // Check if we need to load assets
+        $load_assets = false;
+        
+        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'sight_reading')) {
+            $load_assets = true;
+        }
+        
+        // Also check for the shortcode in widgets
+        if (!$load_assets) {
+            $widget_areas = wp_get_sidebars_widgets();
+            foreach ($widget_areas as $widgets) {
+                if (is_array($widgets)) {
+                    foreach ($widgets as $widget) {
+                        $widget_content = get_option('widget_text');
+                        if (is_array($widget_content)) {
+                            foreach ($widget_content as $instance) {
+                                if (isset($instance['text']) && has_shortcode($instance['text'], 'sight_reading')) {
+                                    $load_assets = true;
+                                    break 3;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if ($load_assets || $this->assets_loaded) {
+            $this->enqueue_assets();
+        }
+    }
+    
+    /**
+     * Actually enqueue the assets
+     */
+    private function enqueue_assets() {
+        $asset_path = get_stylesheet_directory_uri() . '/assets/Sightreading-game/';
+        $asset_dir = get_stylesheet_directory() . '/assets/Sightreading-game/';
+        
+        // Get file modification times for cache busting
+        $css_time = file_exists($asset_dir . 'sightreading.css') ? filemtime($asset_dir . 'sightreading.css') : $this->version;
+        $js_time = file_exists($asset_dir . 'sightreading-engine.js') ? filemtime($asset_dir . 'sightreading-engine.js') : $this->version;
+        
+        // Enqueue CSS
+        wp_enqueue_style(
+            'sightreading-game-css',
+            $asset_path . 'sightreading.css',
+            array(),
+            $css_time
+        );
+        
+        // Enqueue JavaScript
+        wp_enqueue_script(
+            'sightreading-game-js',
+            $asset_path . 'sightreading-engine.js',
+            array('jquery'),
+            $js_time,
+            true
+        );
+        
+        // Check if songs file exists and enqueue it
+        if (file_exists($asset_dir . 'sightreading-songs.js')) {
+            wp_enqueue_script(
+                'sightreading-songs-js',
+                $asset_path . 'sightreading-songs.js',
+                array('sightreading-game-js'),
+                filemtime($asset_dir . 'sightreading-songs.js'),
+                true
+            );
+        }
+        
+        // Localize script with WordPress data
+        wp_localize_script('sightreading-game-js', 'SRT_WP', array(
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('srt_nonce'),
+            'userId' => get_current_user_id(),
+            'isLoggedIn' => is_user_logged_in(),
+            'userName' => is_user_logged_in() ? wp_get_current_user()->display_name : '',
+            'userEmail' => is_user_logged_in() ? wp_get_current_user()->user_email : '',
+            'version' => $this->version,
+            'colors' => $this->colors,
+            'headerOffset' => 50, // Changed to 50px for the black band
+            'locale' => get_locale(),
+            'rtl' => is_rtl(),
+            'pluginUrl' => $asset_path,
+            'notationSystems' => $this->notation_systems,
+            'achievements' => $this->achievements,
+            'gameModes' => $this->game_modes,
+            'branding' => array(
+                'gold' => $this->colors['gold'],
+                'black' => $this->colors['black'],
+                'white' => $this->colors['white']
+            ),
+            'featureFlags' => array(
+                'useToneJS' => true,
+                'enableCustomSounds' => true,
+                'enableMIDI' => true,
+                'enableAchievements' => true
+            ),
+            'strings' => array(
+                'loading' => __('Loading Sight Reading Game...', 'sight-reading'),
+                'error' => __('An error occurred. Please try again.', 'sight-reading'),
+                'engineInitError' => __('Failed to initialize sight reading engine. Please refresh the page.', 'sight-reading'),
+                'success' => __('Well done!', 'sight-reading'),
+                'tryAgain' => __('Try again', 'sight-reading'),
+                'sessionSaved' => __('Session saved successfully!', 'sight-reading'),
+                'midiConnected' => __('MIDI device connected', 'sight-reading'),
+                'midiDisconnected' => __('MIDI device disconnected', 'sight-reading'),
+                'midiNotSupported' => __('Web MIDI is not supported in this browser. Use Chrome, Edge, or Opera for MIDI support.', 'sight-reading'),
+                'achievementUnlocked' => __('Achievement Unlocked!', 'sight-reading'),
+                'correct' => __('Correct!', 'sight-reading'),
+                'incorrect' => __('Try again', 'sight-reading'),
+                'perfect' => __('Perfect!', 'sight-reading'),
+                'excellent' => __('Excellent!', 'sight-reading'),
+                'good' => __('Good!', 'sight-reading'),
+                'keepTrying' => __('Keep trying!', 'sight-reading'),
+                'gameComplete' => __('Session complete!', 'sight-reading'),
+                'newRecord' => __('New personal record!', 'sight-reading'),
+                'soundUploadSuccess' => __('Custom sound uploaded successfully!', 'sight-reading'),
+                'soundUploadError' => __('Error uploading sound file. Please try again.', 'sight-reading'),
+                'vstNotSupported' => __('VST plugins are not supported in browsers. Convert to SFZ or SF2 format.', 'sight-reading')
+            )
+        ));
+        
+        // Add Tone.js from CDN
+        wp_enqueue_script(
+            'tone-js',
+            'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js',
+            array(),
+            '14.8.49',
+            true
+        );
+        
+        // Make our script dependent on Tone.js
+        wp_script_add_data('sightreading-game-js', 'deps', array('jquery', 'tone-js'));
+    }
+    
+    /**
+     * AJAX handler for saving session data
+     */
+    public function ajax_save_session() {
+        // Verify nonce
+        if (!wp_verify_nonce($_POST['nonce'], 'srt_nonce')) {
+            wp_die('Invalid nonce');
+        }
+        
+        // Get user ID
+        $user_id = get_current_user_id();
+        if (!$user_id) {
+            wp_send_json_error('User not logged in');
+            return;
+        }
+        
+        // Sanitize and validate session data
+        $session_data = array(
+            'hits' => intval($_POST['hits']),
+            'misses' => intval($_POST['misses']),
+            'accuracy' => floatval($_POST['accuracy']),
+            'streak' => intval($_POST['streak']),
+            'max_streak' => intval($_POST['max_streak']),
+            'elapsed_time' => intval($_POST['elapsed_time']),
+            'difficulty' => sanitize_text_field($_POST['difficulty']),
+            'mode' => sanitize_text_field($_POST['mode']),
+            'staff' => sanitize_text_field($_POST['staff']),
+            'key' => sanitize_text_field($_POST['key']),
+            'tempo' => intval($_POST['tempo']),
+            'notes_played' => intval($_POST['notes_played']),
+            'achievements' => is_array($_POST['achievements']) ? array_map('sanitize_text_field', $_POST['achievements']) : array(),
+            'timestamp' => current_time('mysql')
+        );
+        
+        // Save to user meta
+        $sessions = get_user_meta($user_id, 'srt_sessions', true) ?: array();
+        $sessions[] = $session_data;
+        
+        // Keep only last 100 sessions to prevent database bloat
+        if (count($sessions) > 100) {
+            $sessions = array_slice($sessions, -100);
+        }
+        
+        update_user_meta($user_id, 'srt_sessions', $sessions);
+        
+        // Update aggregate statistics
+        $stats = get_user_meta($user_id, 'srt_stats', true) ?: array(
+            'total_sessions' => 0,
+            'total_notes' => 0,
+            'total_hits' => 0,
+            'total_misses' => 0,
+            'best_accuracy' => 0,
+            'best_streak' => 0,
+            'total_time' => 0,
+            'achievements' => array()
+        );
+        
+        $stats['total_sessions']++;
+        $stats['total_notes'] += $session_data['notes_played'];
+        $stats['total_hits'] += $session_data['hits'];
+        $stats['total_misses'] += $session_data['misses'];
+        $stats['best_accuracy'] = max($stats['best_accuracy'], $session_data['accuracy']);
+        $stats['best_streak'] = max($stats['best_streak'], $session_data['max_streak']);
+        $stats['total_time'] += $session_data['elapsed_time'];
+        $stats['achievements'] = array_unique(array_merge($stats['achievements'], $session_data['achievements']));
+        
+        update_user_meta($user_id, 'srt_stats', $stats);
+        
+        wp_send_json_success(array(
+            'message' => __('Session saved successfully!', 'sight-reading'),
+            'stats' => $stats
+        ));
+    }
+    
+    /**
+     * AJAX handler for custom sound upload
+     */
+    public function ajax_upload_sound() {
+        // Verify nonce
+        if (!wp_verify_nonce($_POST['nonce'], 'srt_nonce')) {
+            wp_die('Invalid nonce');
+        }
+        
+        // Check if file was uploaded
+        if (!isset($_FILES['sound_file'])) {
+            wp_send_json_error('No file uploaded');
+            return;
+        }
+        
+        $file = $_FILES['sound_file'];
+        
+        // Validate file type
+        $allowed_types = array('audio/wav', 'audio/mpeg', 'audio/ogg', 'application/zip', 'application/octet-stream');
+        $allowed_extensions = array('wav', 'mp3', 'ogg', 'zip', 'sfz', 'sf2');
+        
+        $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        
+        if (!in_array($file['type'], $allowed_types) && !in_array($file_extension, $allowed_extensions)) {
+            wp_send_json_error('Invalid file type. Supported formats: WAV, MP3, OGG, ZIP, SFZ, SF2');
+            return;
+        }
+        
+        // Check file size (max 50MB)
+        if ($file['size'] > 50 * 1024 * 1024) {
+            wp_send_json_error('File too large. Maximum size: 50MB');
+            return;
+        }
+        
+        // Create uploads directory
+        $upload_dir = wp_upload_dir();
+        $piano_sounds_dir = $upload_dir['basedir'] . '/piano-sounds';
+        $piano_sounds_url = $upload_dir['baseurl'] . '/piano-sounds';
+        
+        if (!file_exists($piano_sounds_dir)) {
+            wp_mkdir_p($piano_sounds_dir);
+        }
+        
+        // Generate unique filename
+        $user_id = get_current_user_id();
+        $filename = $user_id . '_' . time() . '_' . sanitize_file_name($file['name']);
+        $filepath = $piano_sounds_dir . '/' . $filename;
+        
+        // Move uploaded file
+        if (move_uploaded_file($file['tmp_name'], $filepath)) {
+            $file_url = $piano_sounds_url . '/' . $filename;
+            
+            // Save file info to user meta
+            $custom_sounds = get_user_meta($user_id, 'srt_custom_sounds', true) ?: array();
+            $custom_sounds[] = array(
+                'filename' => $filename,
+                'original_name' => $file['name'],
+                'url' => $file_url,
+                'size' => $file['size'],
+                'type' => $file['type'],
+                'uploaded' => current_time('mysql')
+            );
+            
+            update_user_meta($user_id, 'srt_custom_sounds', $custom_sounds);
+            
+            wp_send_json_success(array(
+                'message' => __('Sound uploaded successfully!', 'sight-reading'),
+                'file_url' => $file_url,
+                'filename' => $filename
+            ));
+        } else {
+            wp_send_json_error('Failed to upload file');
+        }
+    }
+}
+
+// Initialize the plugin
+new PianoMode_SightReading_Game();
+
+// Hook into theme initialization
+add_action('after_setup_theme', function() {
+    // Make sure the sight reading game is available globally
+    global $pianomode_sight_reading;
+    if (!$pianomode_sight_reading) {
+        $pianomode_sight_reading = new PianoMode_SightReading_Game();
+    }
+});
+
+/**
+ * Helper function to get user's sight reading statistics
+ * Can be used in dashboard or other pages
+ * 
+ * @param int $user_id User ID (optional, defaults to current user)
+ * @return array|false User statistics or false if not found
+ */
+function get_srt_user_stats($user_id = null) {
+    if (!$user_id) {
+        $user_id = get_current_user_id();
+    }
+    
+    if (!$user_id) {
+        return false;
+    }
+    
+    return get_user_meta($user_id, 'srt_stats', true) ?: array(
+        'total_sessions' => 0,
+        'total_notes' => 0,
+        'total_hits' => 0,
+        'total_misses' => 0,
+        'best_accuracy' => 0,
+        'best_streak' => 0,
+        'total_time' => 0,
+        'achievements' => array()
+    );
+}
+
+/**
+ * Helper function to get user's recent sight reading sessions
+ * 
+ * @param int $user_id User ID (optional, defaults to current user)
+ * @param int $limit Number of sessions to return (default 10)
+ * @return array Recent sessions
+ */
+function get_srt_user_recent_sessions($user_id = null, $limit = 10) {
+    if (!$user_id) {
+        $user_id = get_current_user_id();
+    }
+    
+    if (!$user_id) {
+        return array();
+    }
+    
+    $sessions = get_user_meta($user_id, 'srt_sessions', true) ?: array();
+    return array_slice(array_reverse($sessions), 0, $limit);
+}
+
+?>

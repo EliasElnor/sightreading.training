@@ -1,0 +1,1407 @@
+# 🎹 INSTRUCTIONS FINALES - PIANOMODE SIGHT READING TRAINING
+
+## 📋 MÉTHODOLOGIE DE DÉVELOPPEMENT OBLIGATOIRE
+
+### ⚡ Approche en 4 phases STRICTES
+
+#### PHASE 1: ANALYSE PRÉALABLE
+
+1. **Analyser INTÉGRALEMENT** les fichiers PACK_5 fournis
+1. **Identifier précisément** les éléments fonctionnels
+1. **Conserver absolument** le code qui fonctionne
+1. **Lister les corrections** sans toucher à la base
+
+#### PHASE 2: CORRECTIONS PRIORITAIRES
+
+1. **Corriger la correspondance MIDI→Portée** (mapping exact fourni)
+1. **Ajuster la hauteur des portées** (2 portées + 20px marge max)
+1. **Implémenter la bande verticale FIXE** en mode Scroll
+1. **Synchroniser les panneaux** gauche/droite
+
+#### PHASE 3: EXTENSIONS FONCTIONNELLES
+
+1. **Intégrer le Virtual Piano** complet du PACK_4
+1. **Ajouter les figures rythmiques** (croches, doubles, silences)
+1. **Implémenter le mode Free** avec notes en noir
+1. **Optimiser le système audio** (piano uniquement)
+
+#### PHASE 4: POLISH PROFESSIONNEL
+
+1. **Animations fluides** et transitions
+1. **Défilement professionnel** (disparition avant portée)
+1. **Feedback visuel doré** pour les accords
+1. **Documentation complète** du code
+
+## 🎯 SPÉCIFICATIONS TECHNIQUES COMPLÈTES
+
+### 1. ARCHITECTURE GLOBALE FINALE
+
+#### Structure des fichiers (OBLIGATOIRE)
+
+```
+sightreading-main.php              // Shortcode WordPress + HTML (4000+ lignes)
+sightreading.css                   // Styles complets (5000+ lignes)
+sightreading-engine.js             // Moteur principal (6000+ lignes)
+sightreading-chord-generators.js   // Génération avancée (3000+ lignes)
+sightreading-songs.js              // Bibliothèque musicale (2000+ lignes)
+```
+
+# 🎹 INSTRUCTIONS FINALES - PIANOMODE SIGHT READING TRAINING
+
+## 📋 MÉTHODOLOGIE DE DÉVELOPPEMENT OBLIGATOIRE
+
+### ⚡ Approche en 4 phases STRICTES
+
+#### PHASE 1: ANALYSE PRÉALABLE
+1. **Analyser INTÉGRALEMENT** les fichiers PACK_5 fournis
+2. **Identifier précisément** les éléments fonctionnels
+3. **Conserver absolument** le code qui fonctionne
+4. **Lister les corrections** sans toucher à la base
+
+#### PHASE 2: CORRECTIONS PRIORITAIRES
+1. **Corriger la correspondance MIDI→Portée** (mapping exact fourni)
+2. **Ajuster la hauteur des portées** (2 portées + 20px marge max)
+3. **Implémenter la bande verticale FIXE** en mode Scroll
+4. **Synchroniser les panneaux** gauche/droite
+
+#### PHASE 3: EXTENSIONS FONCTIONNELLES
+1. **Intégrer le Virtual Piano** complet du PACK_4
+2. **Ajouter les figures rythmiques** (croches, doubles, silences)
+3. **Implémenter le mode Free** avec notes en noir
+4. **Optimiser le système audio** (piano uniquement)
+
+#### PHASE 4: POLISH PROFESSIONNEL
+1. **Animations fluides** et transitions
+2. **Défilement professionnel** (disparition avant portée)
+3. **Feedback visuel doré** pour les accords
+4. **Documentation complète** du code
+
+## 🎯 SPÉCIFICATIONS TECHNIQUES COMPLÈTES
+
+### 1. ARCHITECTURE GLOBALE FINALE
+
+#### Structure des fichiers (OBLIGATOIRE)
+```
+sightreading-main.php              // Shortcode WordPress + HTML (4000+ lignes)
+sightreading.css                   // Styles complets (5000+ lignes)
+sightreading-engine.js             // Moteur principal (6000+ lignes)
+sightreading-chord-generators.js   // Génération avancée (3000+ lignes)
+sightreading-songs.js              // Bibliothèque musicale (2000+ lignes)
+```
+
+#### Hiérarchie DOM EXACTE
+```html
+<div id="sightReadingGame">
+  <div class="srt-container">
+    
+    <!-- Toolbar principale (NON sticky, margin-bottom: 20px) -->
+    <div class="srt-toolbar-main">
+      <img src="Logo-def_NOIR.png" alt="PianoMode" class="srt-logo">
+      <h1>Sight Reading Training</h1>
+      <div class="srt-toolbar-buttons">
+        <button id="srtPlayBtn" class="srt-btn-icon">▶</button>
+        <button id="srtPauseBtn" class="srt-btn-icon">⏸</button>
+        <button id="srtStopBtn" class="srt-btn-icon">⏹</button>
+        <button id="srtResetBtn" class="srt-btn-icon">↺</button>
+        <button id="srtSettingsBtn" class="srt-btn-icon">⚙</button>
+        <button id="srtStatsBtn" class="srt-btn-icon">📊</button>
+      </div>
+    </div>
+    
+    <!-- Control Bar (compacte, bien espacée) -->
+    <div class="srt-control-bar">
+      <div class="srt-mode-selector">
+        <button class="srt-mode-btn active" data-mode="wait">Wait Mode</button>
+        <button class="srt-mode-btn" data-mode="scroll">Scroll Mode</button>
+        <button class="srt-mode-btn" data-mode="free">Free Play</button>
+      </div>
+      
+      <div class="srt-tempo-group">
+        <label>Tempo</label>
+        <input id="srtTempoSlider" type="range" min="40" max="200" value="100">
+        <span id="srtTempoValue">100 BPM</span>
+      </div>
+      
+      <button id="srtMetronomeBtn" class="srt-btn-toggle">
+        <span class="srt-icon">🎵</span>
+        <span class="srt-label">Metronome</span>
+      </button>
+      
+      <div class="srt-difficulty-group">
+        <select id="srtDifficultySelect">
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+          <option value="expert">Expert</option>
+        </select>
+      </div>
+      
+      <div class="srt-volume-group">
+        <span class="srt-icon">🔊</span>
+        <input id="srtVolume" type="range" min="0" max="100" value="75">
+        <span id="srtVolumeValue">75%</span>
+      </div>
+      
+      <button id="srtMidiConnectBtn" class="srt-btn-midi">
+        <span class="srt-midi-status"></span>
+        MIDI
+      </button>
+    </div>
+    
+    <!-- Zone centrale avec hauteur RÉDUITE -->
+    <div class="srt-center-area">
+      <div class="srt-score-container">
+        <!-- Canvas hauteur: 2 portées (140px) + marges (20px) = 160px MAX -->
+        <canvas id="srtScoreCanvas" width="1200" height="160"></canvas>
+        
+        <!-- Bande verticale FIXE dorée (mode Scroll) -->
+        <div id="srtPlayhead"></div>
+        
+        <!-- Layer de feedback pour notes incorrectes -->
+        <div id="srtFeedbackLayer"></div>
+        
+        <!-- Brackets pour grand staff -->
+        <div class="srt-staff-bracket"></div>
+      </div>
+    </div>
+    
+    <!-- Piano virtuel PACK_4 complet -->
+    <div id="srtPianoContainer">
+      <div class="srt-piano-controls">
+        <button class="srt-octave-btn" data-octaves="5">5 Octaves</button>
+        <button class="srt-octave-btn active" data-octaves="7">7 Octaves</button>
+        <button class="srt-octave-btn" data-octaves="all">88 Keys</button>
+      </div>
+      
+      <div class="srt-piano-keyboard" id="srtPianoKeyboard">
+        <!-- 88 touches générées dynamiquement avec labels -->
+      </div>
+      
+      <div class="srt-piano-info">
+        <span class="srt-info-text">Connect MIDI or use Computer Keyboard</span>
+        <span class="srt-sustain-hint">Hold ALT for sustain pedal</span>
+      </div>
+    </div>
+    
+    <!-- Panneau Settings SYMÉTRIQUE (gauche, 400px) -->
+    <div id="srtSettingsPanel" class="srt-panel srt-panel-left">
+      <div class="srt-panel-header">
+        <h3>Settings</h3>
+        <button class="srt-panel-close" id="srtSettingsPanelClose">×</button>
+      </div>
+      
+      <div class="srt-panel-content">
+        <!-- Generator Type -->
+        <div class="srt-setting-group">
+          <label>Exercise Type</label>
+          <div class="srt-btn-group">
+            <button class="srt-btn-option active" data-generator="random">Random</button>
+            <button class="srt-btn-option" data-generator="scales">Scales</button>
+            <button class="srt-btn-option" data-generator="triads">Triads</button>
+            <button class="srt-btn-option" data-generator="chords">Chords</button>
+            <button class="srt-btn-option" data-generator="arpeggios">Arpeggios</button>
+            <button class="srt-btn-option" data-generator="progression">Progressions</button>
+          </div>
+        </div>
+        
+        <!-- Note Density -->
+        <div class="srt-setting-group">
+          <label>Note Density</label>
+          <div class="srt-slider-group">
+            <input type="range" id="srtNoteDensity" min="1" max="4" value="1">
+            <span id="srtNoteDensityValue">Single Notes</span>
+          </div>
+        </div>
+        
+        <!-- Rhythm Complexity -->
+        <div class="srt-setting-group">
+          <label>Rhythm Complexity</label>
+          <div class="srt-btn-group">
+            <button class="srt-btn-option active" data-rhythm="simple">Simple</button>
+            <button class="srt-btn-option" data-rhythm="moderate">Moderate</button>
+            <button class="srt-btn-option" data-rhythm="complex">Complex</button>
+          </div>
+        </div>
+        
+        <!-- Staff Display -->
+        <div class="srt-setting-group">
+          <label>Staff Display</label>
+          <div class="srt-btn-group">
+            <button class="srt-btn-option" data-clef="treble">Treble</button>
+            <button class="srt-btn-option" data-clef="bass">Bass</button>
+            <button class="srt-btn-option active" data-clef="grand">Grand Staff</button>
+          </div>
+        </div>
+        
+        <!-- Key Signature -->
+        <div class="srt-setting-group">
+          <label>Key Signature</label>
+          <select id="srtKeySignature">
+            <option value="C">C Major / A minor</option>
+            <option value="G">G Major / E minor (1♯)</option>
+            <option value="D">D Major / B minor (2♯)</option>
+            <option value="A">A Major / F♯ minor (3♯)</option>
+            <option value="E">E Major / C♯ minor (4♯)</option>
+            <option value="B">B Major / G♯ minor (5♯)</option>
+            <option value="F#">F♯ Major / D♯ minor (6♯)</option>
+            <option value="F">F Major / D minor (1♭)</option>
+            <option value="Bb">B♭ Major / G minor (2♭)</option>
+            <option value="Eb">E♭ Major / C minor (3♭)</option>
+            <option value="Ab">A♭ Major / F minor (4♭)</option>
+            <option value="Db">D♭ Major / B♭ minor (5♭)</option>
+            <option value="Gb">G♭ Major / E♭ minor (6♭)</option>
+          </select>
+        </div>
+        
+        <!-- Note Names Display -->
+        <div class="srt-setting-group">
+          <label>Note Names</label>
+          <select id="srtNoteNamesDisplay">
+            <option value="none">Hidden</option>
+            <option value="us">US (C, D, E...)</option>
+            <option value="int">International (Do, Re, Mi...)</option>
+            <option value="both">Both Systems</option>
+          </select>
+        </div>
+        
+        <!-- MIDI Settings (EN BAS du panneau) -->
+        <div class="srt-setting-group srt-midi-section">
+          <h4>MIDI Configuration</h4>
+          
+          <div class="srt-midi-status-box">
+            <div class="srt-midi-indicator"></div>
+            <span id="srtMidiStatusText">No device connected</span>
+          </div>
+          
+          <select id="srtMidiInput">
+            <option value="">Select MIDI Input...</option>
+          </select>
+          
+          <select id="srtMidiChannel">
+            <option value="all">All Channels</option>
+            <option value="1">Channel 1</option>
+            <option value="2">Channel 2</option>
+            <!-- ... jusqu'à 16 -->
+          </select>
+          
+          <button id="srtMidiRefresh" class="srt-btn-secondary">
+            Refresh Devices
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Panneau Stats SYMÉTRIQUE (droite, 400px) -->
+    <div id="srtStatsPanel" class="srt-panel srt-panel-right">
+      <div class="srt-panel-header">
+        <h3>Performance Stats</h3>
+        <button class="srt-panel-close" id="srtStatsPanelClose">×</button>
+      </div>
+      
+      <div class="srt-panel-content">
+        <!-- Session Stats -->
+        <div class="srt-stats-section">
+          <h4>Current Session</h4>
+          <div class="srt-stat-row">
+            <span class="srt-stat-label">Duration:</span>
+            <span class="srt-stat-value" id="srtSessionDuration">00:00</span>
+          </div>
+          <div class="srt-stat-row">
+            <span class="srt-stat-label">Notes Played:</span>
+            <span class="srt-stat-value" id="srtNotesPlayed">0</span>
+          </div>
+          <div class="srt-stat-row">
+            <span class="srt-stat-label">Accuracy:</span>
+            <span class="srt-stat-value" id="srtAccuracy">0%</span>
+          </div>
+          <div class="srt-stat-row">
+            <span class="srt-stat-label">Current Streak:</span>
+            <span class="srt-stat-value gold" id="srtCurrentStreak">0</span>
+          </div>
+        </div>
+        
+        <!-- Overall Stats -->
+        <div class="srt-stats-section">
+          <h4>Overall Progress</h4>
+          <div class="srt-stat-row">
+            <span class="srt-stat-label">Total Score:</span>
+            <span class="srt-stat-value" id="srtTotalScore">0</span>
+          </div>
+          <div class="srt-stat-row">
+            <span class="srt-stat-label">Best Streak:</span>
+            <span class="srt-stat-value gold" id="srtBestStreak">0</span>
+          </div>
+          <div class="srt-stat-row">
+            <span class="srt-stat-label">Practice Time:</span>
+            <span class="srt-stat-value" id="srtTotalTime">0h</span>
+          </div>
+          <div class="srt-stat-row">
+            <span class="srt-stat-label">Level:</span>
+            <span class="srt-stat-value" id="srtUserLevel">1</span>
+          </div>
+        </div>
+        
+        <!-- Progress Chart -->
+        <div class="srt-stats-section">
+          <h4>Weekly Progress</h4>
+          <canvas id="srtProgressChart" width="350" height="200"></canvas>
+        </div>
+        
+        <!-- Achievements -->
+        <div class="srt-stats-section">
+          <h4>Recent Achievements</h4>
+          <div id="srtRecentAchievements">
+            <!-- Badges générés dynamiquement -->
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</div>
+```
+
+### 2. MODES DE JEU DÉTAILLÉS ET AMÉLIORÉS
+
+#### MODE WAIT (Attente) - Comportement EXACT
+```javascript
+// Implémentation précise:
+{
+  1. Générer l'exercice complet avec notes ET silences
+  2. Afficher toutes les notes sur la portée (hauteur réduite)
+  3. Positionner le curseur sur la première note/silence
+  
+  4. Pour chaque élément:
+     - Si c'est une NOTE:
+       * Attendre que le joueur joue LA/LES bonne(s) note(s)
+       * Si correct → Encadré doré + son piano naturel
+       * Si incorrect → Note rouge transparente (500ms fade)
+     
+     - Si c'est un SILENCE:
+       * Attendre la durée du silence
+       * Si touche pressée → Erreur (flash rouge)
+       * Progression automatique après la durée
+     
+     - Si c'est un ACCORD:
+       * TOUTES les notes doivent être jouées simultanément
+       * TOUT l'accord devient doré (jamais une seule note)
+       * Tolérance: 50ms entre les notes de l'accord
+  
+  5. Défilement intelligent:
+     - Quand on atteint 60% de la largeur visible
+     - Défilement smooth (300ms transition)
+     - Notes disparaissent AVANT le bord gauche (-50px)
+}
+```
+
+#### MODE SCROLL (Défilement) - Version PROFESSIONNELLE
+```javascript
+// Comportement amélioré:
+{
+  1. Bande verticale FIXE dorée:
+     - Position: x = 200px (après clé + armature)
+     - Largeur: 3px
+     - Couleur: var(--srt-gold) avec opacity: 0.5
+     - Effet glow subtil (box-shadow)
+     - Hauteur: couvre les deux portées
+  
+  2. Défilement des notes:
+     - Vitesse liée au tempo (40-200 BPM)
+     - Formule: pixelsPerBeat = (60 / tempo) * 100
+     - Accélération/décélération smooth
+     - Notes disparaissent à x = -50px (avant le bord)
+  
+  3. Interaction:
+     - Note correcte → Continue + effet doré
+     - Note incorrecte → PAUSE immédiate
+     - Reprise après correction
+     - Accords: toutes notes simultanées
+     - Silences: aucune touche pendant la durée
+  
+  4. Optimisations:
+     - Préchargement des 10 prochaines mesures
+     - Canvas double buffering
+     - RequestAnimationFrame pour 60 FPS
+}
+```
+
+#### MODE FREE (Libre) - Notation LIVE
+```javascript
+// Comportement professionnel:
+{
+  1. Portée vide au départ (grand staff)
+  
+  2. Chaque note jouée:
+     - S'affiche en NOIR sur la portée
+     - Placement automatique:
+       * Notes < C4 → Portée de Fa
+       * Notes >= C4 → Portée de Sol
+     - Durée: noire par défaut
+     - Altérations affichées si nécessaire
+  
+  3. Gestion des mesures:
+     - Mesure 4/4 par défaut
+     - Barres de mesure automatiques
+     - Numérotation des mesures
+  
+  4. Défilement:
+     - Quand on atteint la mesure 3
+     - Défilement vers la gauche
+     - Historique conservé (100 mesures max)
+  
+  5. Options avancées:
+     - Export MIDI
+     - Export MusicXML
+     - Rejeu de la séquence
+}
+```
+
+### 3. GÉNÉRATION AVANCÉE DES NOTES ET ACCORDS
+
+#### Structure COMPLÈTE pour chord-generators.js
+```javascript
+class AdvancedChordGenerator {
+  constructor() {
+    this.difficulty = 'beginner';
+    this.keySignature = 'C';
+    this.timeSignature = '4/4';
+    this.includeRests = true;
+    this.rhythmComplexity = 'simple';
+  }
+  
+  // BEGINNER: Notes simples avec rythmes basiques
+  generateBeginner() {
+    // Notes: C3 à C5 (2 octaves)
+    // Rythmes: Rondes, blanches, noires
+    // Silences: Pauses, demi-pauses, soupirs
+    // Tonalités: C, G, F majeur
+    // Pas d'altérations accidentelles
+    
+    const patterns = [
+      { rhythm: [4], type: 'whole' },      // Ronde
+      { rhythm: [2, 2], type: 'half' },    // Blanches
+      { rhythm: [1, 1, 1, 1], type: 'quarter' }, // Noires
+      { rhythm: [1, 1, 'rest', 1], type: 'mixed' } // Avec silence
+    ];
+    
+    return this.generateFromPattern(patterns, 'C3', 'C5');
+  }
+  
+  // INTERMEDIATE: Accords triades + rythmes variés
+  generateIntermediate() {
+    // Notes: A2 à E6 (3.5 octaves)
+    // Accords: Triades majeures/mineures
+    // Rythmes: + croches, triolets
+    // Silences: + demi-soupirs, quarts de soupir
+    // Tonalités: Jusqu'à 3 altérations
+    
+    const elements = [];
+    
+    // Mélange notes simples et accords
+    const density = Math.random();
+    
+    if (density < 0.3) {
+      // Note simple
+      elements.push({
+        type: 'note',
+        pitches: [this.randomNote('A2', 'E6')],
+        duration: this.randomDuration(['eighth', 'quarter', 'half']),
+        staff: this.getStaffForPitch(pitch)
+      });
+    } else if (density < 0.7) {
+      // Triade
+      const root = this.randomNote('C3', 'C5');
+      elements.push({
+        type: 'chord',
+        pitches: this.generateTriad(root, 'major'),
+        duration: this.randomDuration(['quarter', 'half']),
+        staff: 'grand'
+      });
+    } else {
+      // Silence
+      elements.push({
+        type: 'rest',
+        duration: this.randomDuration(['eighth', 'quarter']),
+        staff: Math.random() > 0.5 ? 'treble' : 'bass'
+      });
+    }
+    
+    return elements;
+  }
+  
+  // ADVANCED: Accords 7e + rythmes complexes
+  generateAdvanced() {
+    // Accords: 7e, 9e, sus, dim, aug
+    // Rythmes: Doubles croches, syncopes, notes pointées
+    // Polyrythmie entre les mains
+    // Ornements: trilles, mordants, appogiatures
+    
+    return this.generateComplexPattern({
+      chordTypes: ['maj7', 'min7', 'dom7', 'dim7', 'aug'],
+      rhythmPatterns: ['sixteenth', 'dotted-eighth', 'syncopated'],
+      includeOrnaments: true,
+      polyrhythm: true
+    });
+  }
+  
+  // EXPERT: Complexité maximale
+  generateExpert() {
+    // Accords: 11e, 13e, altérés
+    // Rythmes: Mesures composées, changements de mesure
+    // Toutes tonalités y compris enharmoniques
+    // Passages chromatiques
+    // Contrepoint à 3-4 voix
+    
+    return this.generateExpertLevel({
+      voiceCount: 4,
+      chromaticism: 0.3,
+      metricalComplexity: 'high',
+      harmonicRhythm: 'fast'
+    });
+  }
+  
+  // Helpers pour figures rythmiques
+  generateRhythmicFigures() {
+    return {
+      'whole': { duration: 4, symbol: '𝅝' },
+      'half': { duration: 2, symbol: '𝅗𝅥' },
+      'quarter': { duration: 1, symbol: '♩' },
+      'eighth': { duration: 0.5, symbol: '♪' },
+      'sixteenth': { duration: 0.25, symbol: '♬' },
+      'thirty-second': { duration: 0.125, symbol: '♬♬' },
+      'dotted-half': { duration: 3, symbol: '𝅗𝅥.' },
+      'dotted-quarter': { duration: 1.5, symbol: '♩.' },
+      'dotted-eighth': { duration: 0.75, symbol: '♪.' },
+      'triplet-quarter': { duration: 0.667, symbol: '♩₃' },
+      'triplet-eighth': { duration: 0.333, symbol: '♪₃' }
+    };
+  }
+  
+  // Helpers pour les silences
+  generateRests() {
+    return {
+      'whole-rest': { duration: 4, symbol: '𝄻', position: 'hanging' },
+      'half-rest': { duration: 2, symbol: '𝄼', position: 'sitting' },
+      'quarter-rest': { duration: 1, symbol: '𝄽' },
+      'eighth-rest': { duration: 0.5, symbol: '𝄾' },
+      'sixteenth-rest': { duration: 0.25, symbol: '𝄿' },
+      'thirty-second-rest': { duration: 0.125, symbol: '𝅀' }
+    };
+  }
+}
+```
+
+#### Mapping MIDI → Position Portée CORRIGÉ
+```javascript
+// Correspondance EXACTE et COMPLÈTE MIDI → Staff Position
+const MIDI_TO_STAFF_POSITION = {
+  // OCTAVE 0 (MIDI 21-23)
+  21: { staff: 'bass', line: -10, ledgerLines: 5, noteName: 'A0' },  // A0
+  22: { staff: 'bass', line: -9.5, ledgerLines: 5, noteName: 'A#0' }, // A#0/Bb0
+  23: { staff: 'bass', line: -9.5, ledgerLines: 5, noteName: 'B0' },  // B0
+  
+  // OCTAVE 1 (MIDI 24-35)
+  24: { staff: 'bass', line: -9, ledgerLines: 4, noteName: 'C1' },    // C1
+  25: { staff: 'bass', line: -8.5, ledgerLines: 4, noteName: 'C#1' },  // C#1/Db1
+  26: { staff: 'bass', line: -8.5, ledgerLines: 4, noteName: 'D1' },   // D1
+  27: { staff: 'bass', line: -8, ledgerLines: 4, noteName: 'D#1' },    // D#1/Eb1
+  28: { staff: 'bass', line: -8, ledgerLines: 3, noteName: 'E1' },     // E1
+  29: { staff: 'bass', line: -7.5, ledgerLines: 3, noteName: 'F1' },   // F1
+  30: { staff: 'bass', line: -7, ledgerLines: 3, noteName: 'F#1' },    // F#1/Gb1
+  31: { staff: 'bass', line: -7, ledgerLines: 3, noteName: 'G1' },     // G1
+  32: { staff: 'bass', line: -6.5, ledgerLines: 3, noteName: 'G#1' },  // G#1/Ab1
+  33: { staff: 'bass', line: -6.5, ledgerLines: 2, noteName: 'A1' },   // A1
+  34: { staff: 'bass', line: -6, ledgerLines: 2, noteName: 'A#1' },    // A#1/Bb1
+  35: { staff: 'bass', line: -6, ledgerLines: 2, noteName: 'B1' },     // B1
+  
+  // OCTAVE 2 (MIDI 36-47) - Portée de FA commence vraiment ici
+  36: { staff: 'bass', line: -5.5, ledgerLines: 2, noteName: 'C2' },   // C2
+  37: { staff: 'bass', line: -5, ledgerLines: 2, noteName: 'C#2' },    // C#2/Db2
+  38: { staff: 'bass', line: -5, ledgerLines: 2, noteName: 'D2' },     // D2
+  39: { staff: 'bass', line: -4.5, ledgerLines: 1, noteName: 'D#2' },  // D#2/Eb2
+  40: { staff: 'bass', line: -4.5, ledgerLines: 1, noteName: 'E2' },   // E2
+  41: { staff: 'bass', line: -4, ledgerLines: 1, noteName: 'F2' },     // F2
+  42: { staff: 'bass', line: -3.5, ledgerLines: 1, noteName: 'F#2' },  // F#2/Gb2
+  43: { staff: 'bass', line: -3.5, ledgerLines: 0, noteName: 'G2' },   // G2
+  44: { staff: 'bass', line: -3, ledgerLines: 0, noteName: 'G#2' },    // G#2/Ab2
+  45: { staff: 'bass', line: -3, ledgerLines: 0, noteName: 'A2' },     // A2
+  46: { staff: 'bass', line: -2.5, ledgerLines: 0, noteName: 'A#2' },  // A#2/Bb2
+  47: { staff: 'bass', line: -2.5, ledgerLines: 0, noteName: 'B2' },   // B2
+  
+  // OCTAVE 3 (MIDI 48-59) - Milieu de la portée de FA
+  48: { staff: 'bass', line: -2, ledgerLines: 0, noteName: 'C3' },     // C3
+  49: { staff: 'bass', line: -1.5, ledgerLines: 0, noteName: 'C#3' },  // C#3/Db3
+  50: { staff: 'bass', line: -1.5, ledgerLines: 0, noteName: 'D3' },   // D3
+  51: { staff: 'bass', line: -1, ledgerLines: 0, noteName: 'D#3' },    // D#3/Eb3
+  52: { staff: 'bass', line: -1, ledgerLines: 0, noteName: 'E3' },     // E3
+  53: { staff: 'bass', line: -0.5, ledgerLines: 0, noteName: 'F3' },   // F3
+  54: { staff: 'bass', line: 0, ledgerLines: 0, noteName: 'F#3' },     // F#3/Gb3
+  55: { staff: 'bass', line: 0, ledgerLines: 0, noteName: 'G3' },      // G3
+  56: { staff: 'bass', line: 0.5, ledgerLines: 0, noteName: 'G#3' },   // G#3/Ab3
+  57: { staff: 'bass', line: 0.5, ledgerLines: 0, noteName: 'A3' },    // A3
+  58: { staff: 'bass', line: 1, ledgerLines: 0, noteName: 'A#3' },     // A#3/Bb3
+  59: { staff: 'bass', line: 1, ledgerLines: 0, noteName: 'B3' },      // B3
+  
+  // DO CENTRAL (MIDI 60) - Entre les deux portées
+  60: { staff: 'both', line: 0, ledgerLines: 1, noteName: 'C4' },      // C4 (Middle C)
+  
+  // OCTAVE 4 (MIDI 61-71) - Début portée de SOL
+  61: { staff: 'treble', line: 0.5, ledgerLines: 0, noteName: 'C#4' }, // C#4/Db4
+  62: { staff: 'treble', line: 0.5, ledgerLines: 0, noteName: 'D4' },  // D4
+  63: { staff: 'treble', line: 1, ledgerLines: 0, noteName: 'D#4' },   // D#4/Eb4
+  64: { staff: 'treble', line: 1, ledgerLines: 0, noteName: 'E4' },    // E4
+  65: { staff: 'treble', line: 1.5, ledgerLines: 0, noteName: 'F4' },  // F4
+  66: { staff: 'treble', line: 2, ledgerLines: 0, noteName: 'F#4' },   // F#4/Gb4
+  67: { staff: 'treble', line: 2, ledgerLines: 0, noteName: 'G4' },    // G4
+  68: { staff: 'treble', line: 2.5, ledgerLines: 0, noteName: 'G#4' }, // G#4/Ab4
+  69: { staff: 'treble', line: 2.5, ledgerLines: 0, noteName: 'A4' },  // A4
+  70: { staff: 'treble', line: 3, ledgerLines: 0, noteName: 'A#4' },   // A#4/Bb4
+  71: { staff: 'treble', line: 3, ledgerLines: 0, noteName: 'B4' },    // B4
+  
+  // OCTAVE 5 (MIDI 72-83) - Haut de la portée de SOL
+  72: { staff: 'treble', line: 3.5, ledgerLines: 0, noteName: 'C5' },  // C5
+  73: { staff: 'treble', line: 4, ledgerLines: 0, noteName: 'C#5' },   // C#5/Db5
+  74: { staff: 'treble', line: 4, ledgerLines: 0, noteName: 'D5' },    // D5
+  75: { staff: 'treble', line: 4.5, ledgerLines: 0, noteName: 'D#5' }, // D#5/Eb5
+  76: { staff: 'treble', line: 4.5, ledgerLines: 0, noteName: 'E5' },  // E5
+  77: { staff: 'treble', line: 5, ledgerLines: 0, noteName: 'F5' },    // F5
+  78: { staff: 'treble', line: 5.5, ledgerLines: 1, noteName: 'F#5' }, // F#5/Gb5
+  79: { staff: 'treble', line: 5.5, ledgerLines: 1, noteName: 'G5' },  // G5
+  80: { staff: 'treble', line: 6, ledgerLines: 1, noteName: 'G#5' },   // G#5/Ab5
+  81: { staff: 'treble', line: 6, ledgerLines: 1, noteName: 'A5' },    // A5
+  82: { staff: 'treble', line: 6.5, ledgerLines: 1, noteName: 'A#5' }, // A#5/Bb5
+  83: { staff: 'treble', line: 6.5, ledgerLines: 1, noteName: 'B5' },  // B5
+  
+  // OCTAVE 6+ (MIDI 84-108) - Au-dessus de la portée
+  84: { staff: 'treble', line: 7, ledgerLines: 2, noteName: 'C6' },    // C6
+  // ... continuer jusqu'à C8 (MIDI 108)
+};
+
+// Helper: Calculer position Y exacte sur le canvas
+function getNoteYPosition(midiNote, staffTop, lineHeight) {
+  const position = MIDI_TO_STAFF_POSITION[midiNote];
+  if (!position) return null;
+  
+  // Position de base selon la ligne
+  let y = staffTop + (position.line * lineHeight / 2);
+  
+  // Ajustement pour le type de portée
+  if (position.staff === 'bass') {
+    y += 70; // Décalage pour portée de Fa
+  } else if (position.staff === 'both') {
+    y = staffTop + 35; // Do central entre les portées
+  }
+  
+  return {
+    y: y,
+    ledgerLines: position.ledgerLines,
+    staff: position.staff,
+    noteName: position.noteName
+  };
+}
+```
+
+### 4. VIRTUAL PIANO COMPLET (PACK_4)
+
+```javascript
+class VirtualPianoComplete {
+  constructor(container) {
+    this.container = container;
+    this.keys = 88;
+    this.startNote = 21; // A0
+    this.endNote = 108;  // C8
+    this.octaveView = 7; // Par défaut 7 octaves
+    this.sustainPedal = false;
+    this.noteNameDisplay = 'both'; // 'us', 'int', 'both', 'none'
+    
+    // Mapping clavier AZERTY complet
+    this.keyboardMap = {
+      // Octave basse (touches du haut)
+      '&': 48, '1': 48, 'é': 50, '2': 51, '"': 52, '3': 54, 
+      "'": 55, '4': 56, '(': 57, '5': 58, '-': 59,
+      
+      // Octave principale (AZERTY)
+      'q': 60, 'z': 61, 's': 62, 'e': 63, 'd': 64, 'r': 65,
+      'f': 66, 't': 67, 'g': 68, 'y': 69, 'h': 70, 'u': 71,
+      'j': 72, 'i': 73, 'k': 74, 'o': 75, 'l': 76, 'p': 77,
+      'm': 78, '^': 79, 'ù': 80, '$': 81, '*': 82,
+      
+      // Octave haute (rangée du bas)
+      'w': 72, 'x': 73, 'c': 74, 'v': 75, 'b': 76, 'n': 77,
+      ',': 78, ';': 79, ':': 80, '!': 81
+    };
+  }
+  
+  createKeyboard() {
+    const keyboard = document.createElement('div');
+    keyboard.className = 'srt-piano-keyboard';
+    
+    // Pattern des touches noires dans une octave
+    const blackKeyPattern = [1, 1, 0, 1, 1, 1, 0]; // C#, D#, -, F#, G#, A#, -
+    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const noteNamesInt = ['Do', 'Do#', 'Ré', 'Ré#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'];
+    
+    // Créer toutes les touches
+    for (let midi = this.startNote; midi <= this.endNote; midi++) {
+      const noteIndex = (midi - 12) % 12; // Ajusté pour commencer à C
+      const octave = Math.floor((midi - 12) / 12);
+      const isBlack = noteNames[noteIndex].includes('#');
+      
+      const key = document.createElement('div');
+      key.className = `srt-piano-key ${isBlack ? 'black' : 'white'}`;
+      key.dataset.midi = midi;
+      key.dataset.note = noteNames[noteIndex];
+      key.dataset.octave = octave;
+      
+      // Labels pour touches blanches uniquement
+      if (!isBlack) {
+        const label = document.createElement('div');
+        label.className = 'srt-key-label';
+        
+        if (this.noteNameDisplay === 'us' || this.noteNameDisplay === 'both') {
+          const usLabel = document.createElement('span');
+          usLabel.className = 'srt-label-us';
+          usLabel.textContent = noteNames[noteIndex];
+          label.appendChild(usLabel);
+        }
+        
+        if (this.noteNameDisplay === 'int' || this.noteNameDisplay === 'both') {
+          const intLabel = document.createElement('span');
+          intLabel.className = 'srt-label-int';
+          intLabel.textContent = noteNamesInt[noteIndex];
+          label.appendChild(intLabel);
+        }
+        
+        // Numéro d'octave sur les Do
+        if (noteIndex === 0) {
+          const octaveLabel = document.createElement('span');
+          octaveLabel.className = 'srt-label-octave';
+          octaveLabel.textContent = octave;
+          label.appendChild(octaveLabel);
+        }
+        
+        key.appendChild(label);
+      }
+      
+      // Event listeners
+      key.addEventListener('mousedown', (e) => this.handleKeyPress(midi, e));
+      key.addEventListener('mouseup', (e) => this.handleKeyRelease(midi, e));
+      key.addEventListener('mouseenter', (e) => {
+        if (e.buttons === 1) this.handleKeyPress(midi, e);
+      });
+      key.addEventListener('mouseleave', (e) => this.handleKeyRelease(midi, e));
+      
+      keyboard.appendChild(key);
+    }
+    
+    return keyboard;
+  }
+  
+  handleKeyPress(midiNote, event) {
+    const key = document.querySelector(`[data-midi="${midiNote}"]`);
+    if (key.classList.contains('active')) return;
+    
+    key.classList.add('active');
+    
+    // Animation visuelle
+    const ripple = document.createElement('div');
+    ripple.className = 'srt-key-ripple';
+    key.appendChild(ripple);
+    
+    // Jouer la note avec Tone.js
+    if (window.srtPiano) {
+      const noteFreq = Tone.Frequency(midiNote, "midi");
+      window.srtPiano.triggerAttack(noteFreq, Tone.now(), 0.8);
+    }
+    
+    // Émettre l'événement pour le moteur principal
+    this.container.dispatchEvent(new CustomEvent('pianoNoteOn', {
+      detail: { midiNote, velocity: 80, source: 'virtual' }
+    }));
+  }
+  
+  handleKeyRelease(midiNote, event) {
+    const key = document.querySelector(`[data-midi="${midiNote}"]`);
+    if (!key || !key.classList.contains('active')) return;
+    
+    key.classList.remove('active');
+    
+    // Retirer l'animation
+    const ripple = key.querySelector('.srt-key-ripple');
+    if (ripple) {
+      ripple.classList.add('fade-out');
+      setTimeout(() => ripple.remove(), 300);
+    }
+    
+    // Arrêter la note (sauf si sustain)
+    if (window.srtPiano && !this.sustainPedal) {
+      const noteFreq = Tone.Frequency(midiNote, "midi");
+      window.srtPiano.triggerRelease(noteFreq, Tone.now());
+    }
+    
+    // Émettre l'événement
+    this.container.dispatchEvent(new CustomEvent('pianoNoteOff', {
+      detail: { midiNote, source: 'virtual' }
+    }));
+  }
+  
+  // Gestion du sustain avec ALT
+  initSustainPedal() {
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Alt' && !this.sustainPedal) {
+        e.preventDefault();
+        this.sustainPedal = true;
+        document.getElementById('srtSustainIndicator')?.classList.add('active');
+      }
+    });
+    
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'Alt' && this.sustainPedal) {
+        e.preventDefault();
+        this.sustainPedal = false;
+        document.getElementById('srtSustainIndicator')?.classList.remove('active');
+        
+        // Relâcher toutes les notes sustainées
+        if (window.srtPiano) {
+          window.srtPiano.releaseAll(Tone.now());
+        }
+      }
+    });
+  }
+  
+  // Changement d'octaves visibles
+  setOctaveView(octaves) {
+    this.octaveView = octaves;
+    const keyboard = this.container.querySelector('.srt-piano-keyboard');
+    
+    if (octaves === 5) {
+      keyboard.classList.add('five-octaves');
+      keyboard.classList.remove('seven-octaves', 'all-keys');
+    } else if (octaves === 7) {
+      keyboard.classList.add('seven-octaves');
+      keyboard.classList.remove('five-octaves', 'all-keys');
+    } else {
+      keyboard.classList.add('all-keys');
+      keyboard.classList.remove('five-octaves', 'seven-octaves');
+    }
+  }
+}
+```
+
+### 5. INTÉGRATION AUDIO PROFESSIONNELLE (Tone.js)
+
+```javascript
+// Configuration Tone.js avec Salamander Grand Piano
+class AudioEngine {
+  constructor() {
+    this.loaded = false;
+    this.piano = null;
+    this.metronome = null;
+    this.volume = 0.75;
+    this.metronomeVolume = 0.5;
+  }
+  
+  async initialize() {
+    // Créer le sampler piano
+    this.piano = new Tone.Sampler({
+      urls: {
+        // Notes clés pour l'interpolation
+        'A0': 'A0.mp3',
+        'C1': 'C1.mp3', 'D#1': 'Ds1.mp3', 'F#1': 'Fs1.mp3', 'A1': 'A1.mp3',
+        'C2': 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3', 'A2': 'A2.mp3',
+        'C3': 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3', 'A3': 'A3.mp3',
+        'C4': 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', 'A4': 'A4.mp3',
+        'C5': 'C5.mp3', 'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3', 'A5': 'A5.mp3',
+        'C6': 'C6.mp3', 'D#6': 'Ds6.mp3', 'F#6': 'Fs6.mp3', 'A6': 'A6.mp3',
+        'C7': 'C7.mp3', 'D#7': 'Ds7.mp3', 'F#7': 'Fs7.mp3', 'A7': 'A7.mp3',
+        'C8': 'C8.mp3'
+      },
+      baseUrl: 'https://tonejs.github.io/audio/salamander/',
+      onload: () => {
+        console.log('Piano samples loaded successfully');
+        this.loaded = true;
+      }
+    });
+    
+    // Ajouter une reverb subtile
+    const reverb = new Tone.Reverb({
+      decay: 1.5,
+      wet: 0.15
+    });
+    
+    // Chain: Piano -> Volume -> Reverb -> Output
+    const gainNode = new Tone.Gain(this.volume);
+    this.piano.connect(gainNode);
+    gainNode.connect(reverb);
+    reverb.toDestination();
+    
+    // Créer le métronome (son de clic)
+    this.metronome = new Tone.Oscillator({
+      frequency: 800,
+      type: 'sine'
+    });
+    
+    const metronomeEnvelope = new Tone.AmplitudeEnvelope({
+      attack: 0.001,
+      decay: 0.05,
+      sustain: 0,
+      release: 0.05
+    });
+    
+    const metronomeGain = new Tone.Gain(this.metronomeVolume);
+    
+    this.metronome.connect(metronomeEnvelope);
+    metronomeEnvelope.connect(metronomeGain);
+    metronomeGain.toDestination();
+    
+    // Démarrer le contexte audio
+    await Tone.start();
+    console.log('Audio context ready');
+  }
+  
+  // Jouer une note ou un accord
+  playNote(midiNotes, duration = '8n', velocity = 0.8) {
+    if (!this.loaded) return;
+    
+    // Convertir en tableau si note unique
+    const notes = Array.isArray(midiNotes) ? midiNotes : [midiNotes];
+    
+    // Convertir MIDI en fréquences
+    const frequencies = notes.map(midi => 
+      Tone.Frequency(midi, "midi").toFrequency()
+    );
+    
+    // Jouer toutes les notes
+    frequencies.forEach(freq => {
+      this.piano.triggerAttackRelease(freq, duration, Tone.now(), velocity);
+    });
+    
+    // PAS de son supplémentaire pour succès/erreur
+    // Seulement le son naturel du piano
+  }
+  
+  // Métronome
+  startMetronome(bpm = 100) {
+    if (!this.metronome) return;
+    
+    // Créer une loop pour le métronome
+    const loop = new Tone.Loop((time) => {
+      this.metronome.start(time);
+      this.metronome.stop(time + 0.05);
+    }, `4n`);
+    
+    Tone.Transport.bpm.value = bpm;
+    loop.start(0);
+    Tone.Transport.start();
+  }
+  
+  stopMetronome() {
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
+  }
+  
+  // Contrôle du volume
+  setVolume(value) {
+    this.volume = value / 100;
+    if (this.piano) {
+      this.piano.volume.value = Tone.gainToDb(this.volume);
+    }
+  }
+  
+  setMetronomeVolume(value) {
+    this.metronomeVolume = value / 100;
+    // Ajuster le gain du métronome
+  }
+}
+
+// Initialisation globale
+window.srtAudio = new AudioEngine();
+window.srtAudio.initialize();
+```
+
+### 6. FEEDBACK VISUEL PROFESSIONNEL
+
+```javascript
+class VisualFeedback {
+  constructor(canvas, ctx) {
+    this.canvas = canvas;
+    this.ctx = ctx;
+    this.animations = [];
+  }
+  
+  // Note correcte - Encadré doré autour de la note/accord
+  showCorrectNote(x, y, width, height, isChord = false) {
+    // Créer un cadre doré autour de la note/accord
+    const feedback = {
+      type: 'correct',
+      x: x - 5,
+      y: y - 5,
+      width: width + 10,
+      height: height + 10,
+      opacity: 1,
+      scale: 1,
+      startTime: performance.now()
+    };
+    
+    this.animations.push(feedback);
+    
+    // Animation du cadre
+    const animate = () => {
+      const elapsed = performance.now() - feedback.startTime;
+      
+      if (elapsed < 500) {
+        // Pulse effect
+        feedback.scale = 1 + Math.sin(elapsed * 0.01) * 0.1;
+        feedback.opacity = 1 - (elapsed / 1000);
+        
+        requestAnimationFrame(animate);
+      } else {
+        // Retirer l'animation
+        const index = this.animations.indexOf(feedback);
+        if (index > -1) this.animations.splice(index, 1);
+      }
+    };
+    
+    animate();
+  }
+  
+  // Note incorrecte - Note rouge transparente
+  showIncorrectNote(midiNote, x, staffY) {
+    const position = getNoteYPosition(midiNote, staffY, 10);
+    if (!position) return;
+    
+    const feedback = {
+      type: 'incorrect',
+      x: x,
+      y: position.y,
+      midiNote: midiNote,
+      opacity: 0.5,
+      startTime: performance.now()
+    };
+    
+    this.animations.push(feedback);
+    
+    // Fade out après 500ms
+    setTimeout(() => {
+      const index = this.animations.indexOf(feedback);
+      if (index > -1) this.animations.splice(index, 1);
+    }, 500);
+  }
+  
+  // Dessiner toutes les animations
+  render() {
+    this.animations.forEach(anim => {
+      this.ctx.save();
+      
+      if (anim.type === 'correct') {
+        // Cadre doré
+        this.ctx.strokeStyle = `rgba(197, 157, 58, ${anim.opacity})`;
+        this.ctx.lineWidth = 3;
+        this.ctx.shadowBlur = 20 * anim.scale;
+        this.ctx.shadowColor = 'rgba(197, 157, 58, 0.5)';
+        
+        this.ctx.translate(anim.x + anim.width/2, anim.y + anim.height/2);
+        this.ctx.scale(anim.scale, anim.scale);
+        this.ctx.translate(-(anim.x + anim.width/2), -(anim.y + anim.height/2));
+        
+        this.ctx.strokeRect(anim.x, anim.y, anim.width, anim.height);
+        
+      } else if (anim.type === 'incorrect') {
+        // Note rouge transparente
+        const elapsed = performance.now() - anim.startTime;
+        const opacity = Math.max(0, 0.5 - (elapsed / 1000));
+        
+        this.ctx.fillStyle = `rgba(244, 67, 54, ${opacity})`;
+        this.ctx.beginPath();
+        this.ctx.ellipse(anim.x, anim.y, 8, 6, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      
+      this.ctx.restore();
+    });
+  }
+  
+  // Bande verticale fixe pour mode Scroll
+  drawPlayhead(x, height) {
+    this.ctx.save();
+    
+    // Ligne principale dorée
+    this.ctx.strokeStyle = 'rgba(197, 157, 58, 0.6)';
+    this.ctx.lineWidth = 3;
+    this.ctx.shadowBlur = 10;
+    this.ctx.shadowColor = 'rgba(197, 157, 58, 0.4)';
+    
+    this.ctx.beginPath();
+    this.ctx.moveTo(x, 0);
+    this.ctx.lineTo(x, height);
+    this.ctx.stroke();
+    
+    // Effet de glow animé
+    const time = performance.now() / 1000;
+    const glowOpacity = 0.3 + Math.sin(time * 2) * 0.1;
+    
+    this.ctx.strokeStyle = `rgba(212, 175, 55, ${glowOpacity})`;
+    this.ctx.lineWidth = 6;
+    this.ctx.shadowBlur = 20;
+    
+    this.ctx.beginPath();
+    this.ctx.moveTo(x, 0);
+    this.ctx.lineTo(x, height);
+    this.ctx.stroke();
+    
+    this.ctx.restore();
+  }
+}
+```
+
+## 🎨 DESIGN & CSS AMÉLIORÉ
+
+### Palette PianoMode stricte
+```css
+:root {
+  /* Couleurs PianoMode EXACTES */
+  --srt-gold: #C59D3A;
+  --srt-gold-light: #D4A942;
+  --srt-gold-dark: #B08A2E;
+  --srt-black: #0B0B0B;
+  --srt-white: #FFFFFF;
+  
+  /* Feedback - Seulement visuels, pas de sons */
+  --srt-success: rgba(197, 157, 58, 0.8); /* Doré */
+  --srt-error: rgba(244, 67, 54, 0.3);    /* Rouge transparent */
+  
+  /* Hauteurs RÉDUITES */
+  --srt-staff-height: 70px;  /* Une portée */
+  --srt-grand-staff-height: 160px; /* Deux portées + espace */
+  --srt-score-container-height: 180px; /* Container total */
+}
+```
+
+### Animations fluides et professionnelles
+```css
+/* Animation des notes qui défilent */
+@keyframes noteScroll {
+  from { transform: translateX(1200px); }
+  to { transform: translateX(-100px); } /* Disparaît AVANT le bord */
+}
+
+/* Pulse doré pour accord correct (TOUT l'accord) */
+@keyframes chordGoldPulse {
+  0% { 
+    filter: drop-shadow(0 0 0 var(--srt-gold));
+    transform: scale(1);
+  }
+  50% { 
+    filter: drop-shadow(0 0 20px var(--srt-gold));
+    transform: scale(1.05);
+  }
+  100% { 
+    filter: drop-shadow(0 0 0 var(--srt-gold));
+    transform: scale(1);
+  }
+}
+
+/* Note incorrecte fade */
+@keyframes incorrectFade {
+  0% { opacity: 0.5; }
+  100% { opacity: 0; }
+}
+
+/* Bande verticale glow (mode Scroll) */
+@keyframes playheadPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.7; }
+}
+
+/* Panneaux symétriques slide */
+@keyframes panelSlideLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes panelSlideRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+```
+
+### Structure CSS des panneaux SYMÉTRIQUES
+```css
+/* Base commune pour les deux panneaux */
+.srt-panel {
+  position: fixed;
+  top: 200px; /* Après toolbar */
+  width: 400px;
+  height: calc(100vh - 220px);
+  background: rgba(11, 11, 11, 0.98);
+  border: 2px solid var(--srt-gold);
+  box-shadow: 0 0 30px rgba(197, 157, 58, 0.2);
+  z-index: 1000;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+}
+
+/* Panneau gauche */
+.srt-panel-left {
+  left: 0;
+  transform: translateX(-100%);
+  border-radius: 0 10px 10px 0;
+  border-left: none;
+}
+
+.srt-panel-left.open {
+  transform: translateX(0);
+  animation: panelSlideLeft 0.3s ease-out;
+}
+
+/* Panneau droit IDENTIQUE mais miroir */
+.srt-panel-right {
+  right: 0;
+  transform: translateX(100%);
+  border-radius: 10px 0 0 10px;
+  border-right: none;
+}
+
+.srt-panel-right.open {
+  transform: translateX(0);
+  animation: panelSlideRight 0.3s ease-out;
+}
+
+/* Header commun */
+.srt-panel-header {
+  padding: 20px;
+  border-bottom: 1px solid rgba(197, 157, 58, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.srt-panel-header h3 {
+  color: var(--srt-gold);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.srt-panel-close {
+  background: transparent;
+  border: none;
+  color: var(--srt-gold);
+  font-size: 2rem;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.srt-panel-close:hover {
+  transform: rotate(90deg);
+}
+```
+
+## 📊 GLOSSAIRE FINAL DES IDs ET CLASSES
+
+### IDs critiques (NE JAMAIS CHANGER)
+```javascript
+// Conteneurs principaux
+#sightReadingGame          // Root
+#srtScoreCanvas           // Canvas principal
+#srtPlayhead              // Bande verticale fixe
+#srtFeedbackLayer         // Layer feedback
+#srtPianoKeyboard         // Clavier piano
+
+// Contrôles
+#srtPlayBtn, #srtPauseBtn, #srtStopBtn, #srtResetBtn
+#srtSettingsBtn, #srtStatsBtn
+#srtTempoSlider, #srtTempoValue
+#srtMetronomeBtn
+#srtDifficultySelect
+#srtVolume, #srtVolumeValue
+#srtMidiConnectBtn
+
+// Panneaux
+#srtSettingsPanel, #srtStatsPanel
+#srtSettingsPanelClose, #srtStatsPanelClose
+
+// Settings
+#srtKeySignature
+#srtNoteNamesDisplay
+#srtNoteDensity, #srtNoteDensityValue
+#srtMidiInput, #srtMidiChannel
+#srtMidiStatusText
+#srtMidiRefresh
+
+// Stats
+#srtSessionDuration
+#srtNotesPlayed
+#srtAccuracy
+#srtCurrentStreak
+#srtTotalScore
+#srtBestStreak
+#srtTotalTime
+#srtUserLevel
+#srtProgressChart
+#srtRecentAchievements
+
+// Classes importantes
+.srt-container
+.srt-toolbar-main
+.srt-control-bar
+.srt-center-area
+.srt-score-container
+.srt-piano-key
+.srt-piano-key.white
+.srt-piano-key.black
+.srt-piano-key.active
+.srt-mode-btn[data-mode]
+.srt-btn-option[data-generator]
+.srt-btn-option[data-clef]
+.srt-btn-option[data-rhythm]
+.srt-panel
+.srt-panel-left
+.srt-panel-right
+.srt-panel.open
+```
+
+## ⚡ CHECKLIST FINALE DE VALIDATION
+
+### Fonctionnalités OBLIGATOIRES
+- [ ] **Hauteur portée**: 160px max (2 portées + 20px)
+- [ ] **Panneaux symétriques**: Même design gauche/droite
+- [ ] **Correspondance MIDI**: Mapping exact fourni utilisé
+- [ ] **Mode Wait**: Notes + silences + feedback doré/rouge
+- [ ] **Mode Scroll**: Bande FIXE à x=200px, notes défilent
+- [ ] **Mode Free**: Notes noires s'affichent en temps réel
+- [ ] **Tempo efficace**: Vraie modification de vitesse (40-200 BPM)
+- [ ] **Sons**: UNIQUEMENT piano, pas de bips/bongs
+- [ ] **Accords**: TOUS dorés ensemble, jamais partiels
+- [ ] **Figures rythmiques**: Croches, doubles, triolets, silences
+- [ ] **Défilement pro**: Notes disparaissent à x=-50px
+- [ ] **Virtual Piano**: 88 touches avec labels US/Int
+- [ ] **MIDI complet**: Input/output, channels, refresh
+- [ ] **Sustain**: Touche ALT fonctionnelle
+- [ ] **Stats en temps réel**: Panneau droit fonctionnel
+- [ ] **Génération avancée**: Tous niveaux produisent du contenu
+
+### Performance
+- [ ] 60 FPS constant
+- [ ] Préchargement audio complet
+- [ ] Double buffering canvas
+- [ ] Animations GPU accelerated
+- [ ] Memory leaks prevented
+
+### Code
+- [ ] 15000+ lignes totales
+- [ ] Pas de placeholders
+- [ ] Documentation inline
+- [ ] Error handling complet
+- [ ] Variables/fonctions cohérentes
+
+## 🚀 RÉSULTAT ATTENDU
+
+Une application de sight-reading **PROFESSIONNELLE** et **COMPLÈTE** qui:
+1. ✅ Respecte EXACTEMENT le design PianoMode
+2. ✅ Fonctionne parfaitement dans tous les modes
+3. ✅ Offre un feedback visuel élégant (pas sonore)
+4. ✅ Gère tous les niveaux de difficulté
+5. ✅ S'intègre parfaitement dans WordPress
+6. ✅ Rivalise avec les meilleures apps du marché
