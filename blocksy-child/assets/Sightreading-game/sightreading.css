@@ -356,12 +356,15 @@
     background: var(--srt-white);
 }
 
-/* Header */
+/* Header (Top Bar - Phase 1.2) */
 .srt-header {
-    background: var(--srt-black);
+    background: linear-gradient(135deg, var(--srt-black) 0%, var(--srt-black-light) 100%);
     color: var(--srt-white);
-    padding: var(--srt-spacing-lg);
+    padding: var(--srt-spacing-lg) var(--srt-spacing-xl);
     margin-bottom: var(--srt-spacing-xl);
+    box-shadow: var(--srt-shadow-lg);
+    position: relative;
+    z-index: var(--srt-z-sticky);
 }
 
 .srt-header-content {
@@ -422,11 +425,14 @@
     color: var(--srt-gold);
 }
 
-/* Control Bar */
+/* Control Bar (Phase 1.2) */
 .srt-control-bar {
-    background: var(--srt-black-light);
-    padding: var(--srt-spacing-md);
-    margin-bottom: var(--srt-spacing-xl);
+    background: linear-gradient(135deg, var(--srt-black-light) 0%, var(--srt-black-medium) 100%);
+    padding: var(--srt-spacing-lg) var(--srt-spacing-xl);
+    margin: 0 auto var(--srt-spacing-xl);
+    max-width: 1400px;
+    border-radius: var(--srt-radius-lg);
+    box-shadow: var(--srt-shadow-md);
 }
 
 .srt-control-group {
@@ -591,14 +597,17 @@
     fill: var(--srt-gray);
 }
 
-/* Staff Container */
+/* Staff Container (Canvas Area - Phase 1.2) */
 .srt-staff-container {
     position: relative;
     width: 100%;
     max-width: 1400px;
-    margin: 0 auto var(--srt-spacing-xl);
-    padding: 0 var(--srt-spacing-lg);
+    margin: 0 auto var(--srt-spacing-2xl);
+    padding: var(--srt-spacing-xl);
     min-height: 200px;
+    background: var(--srt-white);
+    border-radius: var(--srt-radius-lg);
+    box-shadow: var(--srt-shadow-md);
 }
 
 #srtStaffCanvas {
@@ -632,14 +641,15 @@
     }
 }
 
-/* Piano Container */
+/* Piano Container (Phase 1.2 - Will be completed in Phase 1.3) */
 .srt-piano-container {
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
-    padding: var(--srt-spacing-lg);
-    background: var(--srt-black-light);
+    padding: var(--srt-spacing-xl);
+    background: linear-gradient(135deg, var(--srt-black-light) 0%, var(--srt-black-medium) 100%);
     border-radius: var(--srt-radius-lg);
+    box-shadow: var(--srt-shadow-lg);
 }
 
 .srt-piano-info {
@@ -659,18 +669,20 @@
     color: var(--srt-gray);
 }
 
-/* Panels (Hidden by default) */
+/* Panels (Hidden by default - Phase 1.2) */
 .srt-panel {
     position: fixed;
     top: 0;
     width: 400px;
     height: 100vh;
     background: rgba(11, 11, 11, 0.98);
+    backdrop-filter: blur(10px);
     border: 2px solid var(--srt-gold);
-    box-shadow: var(--srt-shadow-xl);
+    box-shadow: 0 0 40px rgba(197, 157, 58, 0.3);
     z-index: var(--srt-z-panel);
-    transition: transform var(--srt-transition-base);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .srt-panel-left {

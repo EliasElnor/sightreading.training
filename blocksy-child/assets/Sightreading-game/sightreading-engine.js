@@ -262,9 +262,8 @@
 
             // Fade in main interface
             setTimeout(() => {
-                this.$mainInterface.fadeIn(600, () => {
-                    this.initializeMainInterface();
-                });
+                this.$mainInterface.show().addClass('visible');
+                this.initializeMainInterface();
             }, 300);
         }
 
