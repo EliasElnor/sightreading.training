@@ -2,7 +2,7 @@
 
 .midi_selector {
     background: white;
-    border: 2px solid $light_border_color;
+    border: 2px solid color-mix(in oklab, var(--border-color), white 20%);
     max-height: 200px;
     overflow-y: auto;
 
@@ -12,16 +12,38 @@
         align-items: center;
         cursor: pointer;
 
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        font: inherit;
+        color: inherit;
+        margin: 0;
+        border-radius: 0;
+        box-shadow: none;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+
         &:hover {
             background: #f5f5f5;
         }
 
+        &:focus {
+            outline: 2px solid rgba(blue, 0.2);
+            outline-offset: -4px;
+        }
+
         &:active {
-            background: darken($button_color_highlight, 5%);
+            background: color-mix(in oklab, var(--button-color-highlight), black 5%);
         }
 
         &.selected {
-            background: $button_color_highlight;
+            background: var(--button-color-highlight);
+        }
+
+        &.selected:focus {
+            outline: 2px solid color-mix(in oklab, var(--button-color-highlight), black 20%);
         }
 
         .row_icon {
@@ -36,4 +58,3 @@
         }
     }
 }
-
