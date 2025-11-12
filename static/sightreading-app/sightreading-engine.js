@@ -269,12 +269,14 @@
                 this.showLoadingProgress(100, 'Ready!');
                 
                 this.isReady = true;
-                
+
                 console.log('✅ Sight Reading Engine initialized successfully!');
-                
-                // Enable "Let's Play" button
+
+                // Show and enable "Let's Play" button - CORRECTED
                 setTimeout(() => {
-                    $('#srtLetsPlayBtn').prop('disabled', false);
+                    $('#srtLoadingPercentage').text('100%');
+                    $('#srtLoadingBar').css('width', '100%');
+                    $('#srtLetsPlayBtn').prop('disabled', false).show(); // Must call .show() to display it!
                 }, 500);
                 
             } catch (error) {
@@ -284,9 +286,12 @@
         }
 
         showLoadingProgress(percent, message) {
-            $('#srtProgressFill').css('width', percent + '%');
-            $('#srtProgressText').text(percent + '%');
-            $('#srtCurrentTip').text('💡 ' + message);
+            // CORRECTED IDs to match PHP
+            $('#srtLoadingBar').css('width', percent + '%');
+            $('#srtLoadingPercentage').text(percent + '%');
+            if (message) {
+                $('#srtLoadingTips p').text('💡 ' + message);
+            }
         }
 
         showError(message) {
