@@ -1,628 +1,1056 @@
 <?php
 /**
- * PianoMode Sight Reading Training - Main File
+ * PianoMode Sight Reading Game - WordPress Integration COMPLETE
+ * File: static/sightreading-app/sightreading-main.php
+ * Version: 2.0.0 - COMPLETE FUNCTIONAL IMPLEMENTATION
  *
- * @package PianoMode
- * @subpackage SightReadingTraining
- * @version 1.0.0
- * @author PianoMode Team
+ * @package PianoModeSightReading
+ * @author PianoMode Development Team
+ * @license GPL-2.0+
  *
- * Description: Application complète de lecture à vue musicale (sight-reading)
- * intégrée à WordPress via shortcode [sightreading_game]
- *
- * Référence: sightreading.training
- * Technologies: HTML5 Canvas, Tone.js, Web MIDI API, VexFlow
+ * Complete sight reading application with:
+ * - Loading screen with progress bar and "Let's Play!" button
+ * - Full interface (toolbar, control bar, staff, piano)
+ * - Settings and Statistics panels (left/right)
+ * - Grand Staff by default (treble + bass)
+ * - Virtual Piano 88 keys (A0-C8)
+ * - MIDI support (Web MIDI API)
+ * - Audio engine (Tone.js + Salamander Piano)
+ * - Multiple game modes (Wait, Scroll, Free)
+ * - Exercise generators (Random, Scales, Chords, Progressions)
+ * - Stats tracking and achievements system
  */
 
-// Sécurité WordPress
+// Security check
 if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly
+    exit;
 }
 
-/**
- * Classe principale Sight Reading Training
- */
-class PianoMode_SightReading_Main {
+class PianoMode_SightReading_Game {
 
-    /**
-     * Version de l'application
-     */
-    const VERSION = '1.0.0';
+    private $version = '2.0.0';
+    private $assets_loaded = false;
 
-    /**
-     * Constructeur
-     */
+    // PianoMode color palette EXACTE
+    private $colors = array(
+        'gold' => '#C59D3A',
+        'gold_light' => '#D4A942',
+        'gold_dark' => '#B08A2E',
+        'black' => '#0B0B0B',
+        'white' => '#FFFFFF',
+        'success' => '#4CAF50',
+        'error' => '#F44336',
+        'info' => '#2196F3',
+        'warning' => '#FF9800'
+    );
+
+    // Notation systems for note names
+    private $notation_systems = array(
+        'international' => array(
+            'C' => 'C', 'C#' => 'C#', 'Db' => 'Db', 'D' => 'D', 'D#' => 'D#', 'Eb' => 'Eb',
+            'E' => 'E', 'F' => 'F', 'F#' => 'F#', 'Gb' => 'Gb', 'G' => 'G', 'G#' => 'G#',
+            'Ab' => 'Ab', 'A' => 'A', 'A#' => 'A#', 'Bb' => 'Bb', 'B' => 'B'
+        ),
+        'latin' => array(
+            'C' => 'Do', 'C#' => 'Do#', 'Db' => 'Réb', 'D' => 'Ré', 'D#' => 'Ré#', 'Eb' => 'Mib',
+            'E' => 'Mi', 'F' => 'Fa', 'F#' => 'Fa#', 'Gb' => 'Solb', 'G' => 'Sol', 'G#' => 'Sol#',
+            'Ab' => 'Lab', 'A' => 'La', 'A#' => 'La#', 'Bb' => 'Sib', 'B' => 'Si'
+        )
+    );
+
+    // Game difficulty levels COMPLETS
+    private $difficulty_levels = array(
+        'beginner' => array(
+            'name' => 'Beginner',
+            'description' => 'Single notes, C position, one staff',
+            'range' => array('C3', 'G4'),
+            'notes_count' => 1,
+            'use_accidentals' => false,
+            'tempo_range' => array(40, 80),
+            'key_signatures' => array('C'),
+            'time_signatures' => array('4/4'),
+            'note_types' => array('whole', 'half', 'quarter'),
+            'use_grand_staff' => false,
+            'staff_preference' => 'treble'
+        ),
+        'elementary' => array(
+            'name' => 'Elementary',
+            'description' => 'Extended range, simple rhythms',
+            'range' => array('A2', 'C5'),
+            'notes_count' => 1,
+            'use_accidentals' => false,
+            'tempo_range' => array(50, 100),
+            'key_signatures' => array('C', 'G', 'F'),
+            'time_signatures' => array('4/4', '3/4'),
+            'note_types' => array('whole', 'half', 'quarter', 'eighth'),
+            'use_grand_staff' => true,
+            'staff_preference' => 'both'
+        ),
+        'intermediate' => array(
+            'name' => 'Intermediate',
+            'description' => 'Two hands, accidentals, chords',
+            'range' => array('C2', 'C6'),
+            'notes_count' => 2,
+            'use_accidentals' => true,
+            'tempo_range' => array(60, 120),
+            'key_signatures' => array('C', 'G', 'D', 'A', 'F', 'Bb', 'Eb'),
+            'time_signatures' => array('4/4', '3/4', '6/8', '2/4'),
+            'note_types' => array('whole', 'half', 'quarter', 'eighth', 'sixteenth', 'dotted'),
+            'use_grand_staff' => true,
+            'staff_preference' => 'both'
+        ),
+        'advanced' => array(
+            'name' => 'Advanced',
+            'description' => 'Complex chords, all keys',
+            'range' => array('A1', 'C7'),
+            'notes_count' => 3,
+            'use_accidentals' => true,
+            'tempo_range' => array(80, 140),
+            'key_signatures' => array('C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb'),
+            'time_signatures' => array('4/4', '3/4', '6/8', '2/4', '5/4', '7/8'),
+            'note_types' => array('whole', 'half', 'quarter', 'eighth', 'sixteenth', 'dotted', 'triplet'),
+            'use_grand_staff' => true,
+            'staff_preference' => 'both'
+        ),
+        'expert' => array(
+            'name' => 'Expert',
+            'description' => 'Professional level, complex polyrhythms',
+            'range' => array('A0', 'C8'),
+            'notes_count' => 4,
+            'use_accidentals' => true,
+            'tempo_range' => array(100, 180),
+            'key_signatures' => array('C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb'),
+            'time_signatures' => array('4/4', '3/4', '6/8', '2/4', '5/4', '7/8', '9/8', '12/8'),
+            'note_types' => array('whole', 'half', 'quarter', 'eighth', 'sixteenth', 'thirty-second', 'dotted', 'triplet', 'quintuplet'),
+            'use_grand_staff' => true,
+            'staff_preference' => 'both'
+        )
+    );
+
+    // Achievements system
+    private $achievements = array(
+        'first_note' => array(
+            'name' => 'First Steps',
+            'description' => 'Play your first note correctly',
+            'icon' => '🎵',
+            'points' => 10
+        ),
+        'perfect_streak' => array(
+            'name' => 'Perfect Streak',
+            'description' => 'Play 10 notes correctly in a row',
+            'icon' => '⭐',
+            'points' => 50
+        ),
+        'sight_reader' => array(
+            'name' => 'Sight Reader',
+            'description' => 'Complete 100 notes in sight reading mode',
+            'icon' => '👁️',
+            'points' => 100
+        ),
+        'speed_demon' => array(
+            'name' => 'Speed Demon',
+            'description' => 'Complete a session at 140+ BPM',
+            'icon' => '⚡',
+            'points' => 150
+        ),
+        'grand_master' => array(
+            'name' => 'Grand Master',
+            'description' => 'Reach expert level',
+            'icon' => '🏆',
+            'points' => 500
+        )
+    );
+
+    // Scale patterns for note generation
+    private $scale_patterns = array(
+        'major' => array(0, 2, 4, 5, 7, 9, 11),
+        'natural_minor' => array(0, 2, 3, 5, 7, 8, 10),
+        'harmonic_minor' => array(0, 2, 3, 5, 7, 8, 11),
+        'melodic_minor' => array(0, 2, 3, 5, 7, 9, 11),
+        'dorian' => array(0, 2, 3, 5, 7, 9, 10),
+        'mixolydian' => array(0, 2, 4, 5, 7, 9, 10)
+    );
+
+    // Chord progressions for advanced levels
+    private $chord_progressions = array(
+        'I-V-vi-IV' => array(0, 7, 9, 5),
+        'ii-V-I' => array(2, 7, 0),
+        'I-vi-ii-V' => array(0, 9, 2, 7),
+        'vi-IV-I-V' => array(9, 5, 0, 7),
+        'I-IV-V-I' => array(0, 5, 7, 0)
+    );
+
     public function __construct() {
-        // Hooks WordPress
-        add_shortcode('sightreading_game', array($this, 'render_shortcode'));
+        add_action('init', array($this, 'init'));
         add_action('wp_enqueue_scripts', array($this, 'enqueue_assets'));
-        add_action('wp_ajax_srt_save_stats', array($this, 'ajax_save_stats'));
-        add_action('wp_ajax_nopriv_srt_save_stats', array($this, 'ajax_save_stats'));
+        add_shortcode('sightreading_game', array($this, 'render_shortcode'));
+
+        // AJAX handlers pour les statistiques
+        add_action('wp_ajax_srt_save_session', array($this, 'ajax_save_session'));
+        add_action('wp_ajax_srt_get_stats', array($this, 'ajax_get_stats'));
+        add_action('wp_ajax_srt_update_achievement', array($this, 'ajax_update_achievement'));
+        add_action('wp_ajax_nopriv_srt_save_session', array($this, 'ajax_save_session'));
+        add_action('wp_ajax_nopriv_srt_get_stats', array($this, 'ajax_get_stats'));
+        add_action('wp_ajax_nopriv_srt_update_achievement', array($this, 'ajax_update_achievement'));
     }
 
-    /**
-     * Enregistrer les scripts et styles
-     */
+    public function init() {
+        // Register custom post types for saved sessions if needed
+        $this->register_post_types();
+    }
+
+    private function register_post_types() {
+        // Custom post type pour sauvegarder les sessions de pratique
+        register_post_type('srt_session', array(
+            'labels' => array(
+                'name' => 'Sight Reading Sessions',
+                'singular_name' => 'Session'
+            ),
+            'public' => false,
+            'show_ui' => false,
+            'capability_type' => 'post',
+            'supports' => array('title', 'custom-fields')
+        ));
+    }
+
     public function enqueue_assets() {
-        // Vérifier si le shortcode est présent sur la page
+        if (!$this->assets_loaded && $this->should_load_assets()) {
+
+            // Enqueue Tone.js FIRST (critical dependency)
+            wp_enqueue_script('tonejs',
+                'https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js',
+                array(),
+                '14.8.49',
+                true
+            );
+
+            // Enqueue Chart.js for statistics graphs
+            wp_enqueue_script('chartjs',
+                'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
+                array(),
+                '3.9.1',
+                true
+            );
+
+            // Enqueue CSS
+            wp_enqueue_style(
+                'sightreading-css',
+                get_stylesheet_directory_uri() . '/static/sightreading-app/sightreading.css',
+                array(),
+                $this->version
+            );
+
+            // Enqueue JavaScript files in correct order
+            wp_enqueue_script(
+                'sightreading-chord-generators',
+                get_stylesheet_directory_uri() . '/static/sightreading-app/sightreading-chord-generators.js',
+                array('jquery'),
+                $this->version,
+                true
+            );
+
+            wp_enqueue_script(
+                'sightreading-songs',
+                get_stylesheet_directory_uri() . '/static/sightreading-app/sightreading-songs.js',
+                array('jquery'),
+                $this->version,
+                true
+            );
+
+            wp_enqueue_script(
+                'sightreading-engine',
+                get_stylesheet_directory_uri() . '/static/sightreading-app/sightreading-engine.js',
+                array('jquery', 'tonejs', 'chartjs', 'sightreading-chord-generators', 'sightreading-songs'),
+                $this->version,
+                true
+            );
+
+            // Pass data to JavaScript
+            wp_localize_script('sightreading-engine', 'srtConfig', array(
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('srt_nonce'),
+                'user_id' => get_current_user_id(),
+                'assets_url' => get_stylesheet_directory_uri() . '/static/sightreading-app/',
+                'colors' => $this->colors,
+                'difficulties' => $this->difficulty_levels,
+                'achievements' => $this->achievements,
+                'notationSystems' => $this->notation_systems,
+                'scalePatterns' => $this->scale_patterns,
+                'chordProgressions' => $this->chord_progressions,
+                'userSettings' => $this->get_user_settings(),
+                'userStats' => $this->get_user_stats(),
+                'translations' => $this->get_translations(),
+                'debug' => defined('WP_DEBUG') && WP_DEBUG
+            ));
+
+            $this->assets_loaded = true;
+        }
+    }
+
+    private function should_load_assets() {
+        // Load assets on sight reading pages or when shortcode is present
         global $post;
-        if (!is_a($post, 'WP_Post') || !has_shortcode($post->post_content, 'sightreading_game')) {
-            return;
+
+        if (is_admin()) {
+            return false;
         }
 
-        // Google Fonts - Montserrat
-        wp_enqueue_style(
-            'srt-montserrat-font',
-            'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap',
-            array(),
-            null
+        if (isset($post) && has_shortcode($post->post_content, 'sightreading_game')) {
+            return true;
+        }
+
+        // Load on specific pages
+        $load_pages = array('sight-reading', 'practice', 'games', 'sightreading');
+        if (is_page($load_pages)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    // Main shortcode render function
+    public function render_shortcode($atts) {
+        // Parse attributes
+        $atts = shortcode_atts(array(
+            'mode' => 'wait',
+            'difficulty' => 'elementary',
+            'show_piano' => 'true',
+            'show_stats' => 'true',
+            'fullscreen' => 'false',
+            'theme' => 'pianomode'
+        ), $atts);
+
+        // Enqueue assets
+        $this->enqueue_assets();
+
+        // Start output buffering
+        ob_start();
+
+        // Render the game interface
+        $this->render_game_interface($atts);
+
+        return ob_get_clean();
+    }
+
+    // Render the main game interface
+    private function render_game_interface($atts) {
+        $user_id = get_current_user_id();
+        $user_settings = $this->get_user_settings($user_id);
+        $user_stats = $this->get_user_stats($user_id);
+        ?>
+
+        <!-- Main Sight Reading Container -->
+        <div id="sightReadingGame" class="srt-container" data-config='<?php echo json_encode($atts); ?>'>
+
+            <!-- Loading Screen with Progress Bar and Let's Play Button -->
+            <div class="srt-loading-screen" id="srtLoadingScreen">
+                <div class="srt-loader">
+                    <div class="srt-loader-logo">
+                        <img src="https://pianomode.com/wp-content/uploads/2025/05/Logo-def_NOIR.png" alt="PianoMode" class="srt-logo-img">
+                    </div>
+                    <div class="srt-loader-text">Loading PianoMode Sight Reading...</div>
+                    <div class="srt-loader-progress">
+                        <div class="srt-loader-bar" id="srtLoadingBar"></div>
+                    </div>
+                    <div class="srt-loader-percentage" id="srtLoadingPercentage">0%</div>
+                    <div class="srt-loader-tips" id="srtLoadingTips">
+                        <p>💡 Tip: Connect a MIDI keyboard for the best experience</p>
+                    </div>
+                    <button class="srt-btn srt-btn-primary srt-lets-play-btn" id="srtLetsPlayBtn" style="display: none;">
+                        Let's Play!
+                    </button>
+                </div>
+            </div>
+
+            <!-- Top Header -->
+            <div class="srt-header" id="srtHeader">
+                <div class="srt-header-content">
+                    <div class="srt-header-left">
+                        <img src="https://pianomode.com/wp-content/uploads/2025/05/Logo-def_NOIR.png" alt="PianoMode" class="srt-header-logo">
+                        <h1 class="srt-header-title">Sight Reading Training</h1>
+                    </div>
+                    <div class="srt-header-stats">
+                        <div class="srt-stat-item">
+                            <span class="srt-stat-label">Hits</span>
+                            <span class="srt-stat-value" id="srtHeaderHits">0</span>
+                        </div>
+                        <div class="srt-stat-item">
+                            <span class="srt-stat-label">Misses</span>
+                            <span class="srt-stat-value" id="srtHeaderMisses">0</span>
+                        </div>
+                        <div class="srt-stat-item">
+                            <span class="srt-stat-label">Streak</span>
+                            <span class="srt-stat-value" id="srtHeaderStreak">0</span>
+                        </div>
+                        <div class="srt-stat-item">
+                            <span class="srt-stat-label">Accuracy</span>
+                            <span class="srt-stat-value" id="srtHeaderAccuracy">0%</span>
+                        </div>
+                    </div>
+                    <div class="srt-header-controls">
+                        <button class="srt-btn srt-btn-compact srt-play-btn" id="srtPlayBtn" title="Play">
+                            <svg class="srt-icon" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                            <span>Play</span>
+                        </button>
+                        <button class="srt-btn srt-btn-compact srt-pause-btn" id="srtPauseBtn" title="Pause" style="display: none;">
+                            <svg class="srt-icon" viewBox="0 0 24 24">
+                                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                            </svg>
+                            <span>Pause</span>
+                        </button>
+                        <button class="srt-btn srt-btn-compact srt-stop-btn" id="srtStopBtn" title="Stop">
+                            <svg class="srt-icon" viewBox="0 0 24 24">
+                                <path d="M6 6h12v12H6z"/>
+                            </svg>
+                            <span>Stop</span>
+                        </button>
+                        <button class="srt-btn srt-btn-compact srt-reset-btn" id="srtResetBtn" title="Reset">
+                            <svg class="srt-icon" viewBox="0 0 24 24">
+                                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                            </svg>
+                            <span>Reset</span>
+                        </button>
+                        <button class="srt-btn srt-btn-settings" id="srtSettingsBtn" title="Settings">
+                            <svg class="srt-icon" viewBox="0 0 24 24">
+                                <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                            </svg>
+                            <span>Settings</span>
+                        </button>
+                        <button class="srt-btn srt-btn-stats" id="srtStatsBtn" title="Statistics">
+                            <svg class="srt-icon" viewBox="0 0 24 24">
+                                <path d="M9,17H7v-7h2V17z M13,17h-2V7h2V17z M17,17h-2v-4h2V17z M19.5,19.1h-15V5h15V19.1z M19.5,3H4.5 c-0.6,0-1,0.4-1,1v15.1c0,0.6,0.4,1,1,1h15c0.6,0,1-0.4,1-1V4C20.5,3.4,20.1,3,19.5,3z"/>
+                            </svg>
+                            <span>Stats</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Toolbar -->
+            <div class="srt-toolbar" id="srtToolbar">
+                <div class="srt-toolbar-content">
+
+                    <!-- Mode Selection -->
+                    <div class="srt-toolbar-section srt-mode-section">
+                        <label class="srt-toolbar-label">Mode</label>
+                        <div class="srt-mode-selector" id="srtModeSelector">
+                            <button class="srt-mode-btn active" data-mode="wait">Wait</button>
+                            <button class="srt-mode-btn" data-mode="scroll">Scroll</button>
+                            <button class="srt-mode-btn" data-mode="free">Free</button>
+                        </div>
+                    </div>
+
+                    <!-- Tempo Control -->
+                    <div class="srt-toolbar-section srt-tempo-section">
+                        <label class="srt-toolbar-label">Tempo</label>
+                        <div class="srt-tempo-control">
+                            <input type="range" id="srtTempoSlider" class="srt-slider" min="40" max="200" value="100" step="5">
+                            <div class="srt-tempo-display">
+                                <span id="srtTempoValue">100</span>
+                                <span class="srt-tempo-unit">BPM</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metronome -->
+                    <div class="srt-toolbar-section srt-metronome-section">
+                        <button class="srt-metronome-btn" id="srtMetronomeBtn" title="Metronome">
+                            <svg class="srt-metronome-icon" viewBox="0 0 24 24">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm1-13h-2v6l5.25 3.15.75-1.23L13 12.5V7z"/>
+                            </svg>
+                            <span class="srt-metronome-text">♩</span>
+                        </button>
+                    </div>
+
+                    <!-- Difficulty -->
+                    <div class="srt-toolbar-section srt-difficulty-section">
+                        <label class="srt-toolbar-label">Difficulty</label>
+                        <select id="srtDifficultySelect" class="srt-select">
+                            <option value="beginner">Beginner</option>
+                            <option value="elementary" selected>Elementary</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                            <option value="expert">Expert</option>
+                        </select>
+                    </div>
+
+                    <!-- Volume Control -->
+                    <div class="srt-toolbar-section srt-volume-section">
+                        <label class="srt-toolbar-label">Volume</label>
+                        <div class="srt-volume-control">
+                            <input type="range" id="srtVolumeSlider" class="srt-slider" min="0" max="100" value="75" step="5">
+                            <div class="srt-volume-display">
+                                <span id="srtVolumeValue">75</span>
+                                <span class="srt-volume-unit">%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MIDI Connection -->
+                    <div class="srt-toolbar-section srt-midi-section">
+                        <button class="srt-btn srt-midi-btn" id="srtMidiBtn" title="Connect MIDI Keyboard">
+                            <svg class="srt-icon" viewBox="0 0 24 24">
+                                <path d="M20 8H4V6h16v2zm-2-2h-3V4h3v2zM20 19H4V9h16v10zM2 21h20v-1H2v1z"/>
+                            </svg>
+                            <span>MIDI</span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Main Game Area -->
+            <div class="srt-main-area" id="srtMainArea">
+
+                <!-- Settings Panel (Left) -->
+                <div class="srt-panel srt-settings-panel" id="srtSettingsPanel" aria-hidden="true">
+                    <div class="srt-panel-header">
+                        <h3>Settings</h3>
+                        <button class="srt-panel-close" id="srtSettingsPanelClose">×</button>
+                    </div>
+                    <div class="srt-panel-content">
+
+                        <!-- Staff Settings -->
+                        <div class="srt-setting-group">
+                            <h4>Staff</h4>
+                            <div class="srt-staff-options">
+                                <button class="srt-staff-btn" data-staff="treble">Treble</button>
+                                <button class="srt-staff-btn" data-staff="bass">Bass</button>
+                                <button class="srt-staff-btn active" data-staff="grand">Grand</button>
+                                <button class="srt-staff-btn" data-staff="alto">Alto</button>
+                            </div>
+                        </div>
+
+                        <!-- Generator Type -->
+                        <div class="srt-setting-group">
+                            <h4>Generator</h4>
+                            <div class="srt-generator-options">
+                                <button class="srt-generator-btn active" data-generator="random">Random</button>
+                                <button class="srt-generator-btn" data-generator="scales">Scales</button>
+                                <button class="srt-generator-btn" data-generator="triads">Triads</button>
+                                <button class="srt-generator-btn" data-generator="chords">Chords</button>
+                                <button class="srt-generator-btn" data-generator="progression">Progression</button>
+                                <button class="srt-generator-btn" data-generator="arpeggios">Arpeggios</button>
+                            </div>
+                        </div>
+
+                        <!-- Note Density -->
+                        <div class="srt-setting-group">
+                            <h4>Notes per Chord</h4>
+                            <div class="srt-slider-setting">
+                                <input type="range" id="srtNotesSlider" min="1" max="4" value="2" step="1" class="srt-range-slider">
+                                <span class="srt-slider-value" id="srtNotesValue">2</span>
+                            </div>
+                        </div>
+
+                        <!-- Hands -->
+                        <div class="srt-setting-group">
+                            <h4>Hands</h4>
+                            <div class="srt-slider-setting">
+                                <input type="range" id="srtHandsSlider" min="1" max="2" value="2" step="1" class="srt-range-slider">
+                                <span class="srt-slider-value" id="srtHandsValue">2</span>
+                            </div>
+                        </div>
+
+                        <!-- Note Range -->
+                        <div class="srt-setting-group">
+                            <h4>Note Range</h4>
+                            <div class="srt-range-setting">
+                                <select id="srtRangeMin" class="srt-note-select">
+                                    <option value="C2">C2</option>
+                                    <option value="C3" selected>C3</option>
+                                    <option value="C4">C4</option>
+                                </select>
+                                <span class="srt-range-separator">to</span>
+                                <select id="srtRangeMax" class="srt-note-select">
+                                    <option value="C5">C5</option>
+                                    <option value="C6" selected>C6</option>
+                                    <option value="C7">C7</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Key Signature -->
+                        <div class="srt-setting-group">
+                            <h4>Key Signature</h4>
+                            <div class="srt-key-signature-grid">
+                                <button class="srt-key-btn active" data-key="C">C</button>
+                                <button class="srt-key-btn" data-key="G">G</button>
+                                <button class="srt-key-btn" data-key="D">D</button>
+                                <button class="srt-key-btn" data-key="A">A</button>
+                                <button class="srt-key-btn" data-key="E">E</button>
+                                <button class="srt-key-btn" data-key="B">B</button>
+                                <button class="srt-key-btn" data-key="F">F</button>
+                                <button class="srt-key-btn" data-key="Bb">Bb</button>
+                                <button class="srt-key-btn" data-key="Eb">Eb</button>
+                                <button class="srt-key-btn" data-key="Ab">Ab</button>
+                                <button class="srt-key-btn" data-key="Db">Db</button>
+                                <button class="srt-key-btn" data-key="Gb">Gb</button>
+                            </div>
+                        </div>
+
+                        <!-- Note Name Display -->
+                        <div class="srt-setting-group">
+                            <h4>Note Names</h4>
+                            <div class="srt-note-names-options">
+                                <label class="srt-checkbox-label">
+                                    <input type="checkbox" id="srtDisplayNotes" checked>
+                                    <span class="srt-checkbox"></span>
+                                    Display Note Names
+                                </label>
+                                <select id="srtNotationSystem" class="srt-select">
+                                    <option value="international">International (C, D, E...)</option>
+                                    <option value="latin">Latin (Do, Ré, Mi...)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- MIDI Settings -->
+                        <div class="srt-setting-group">
+                            <h4>MIDI Configuration</h4>
+                            <div class="srt-midi-settings">
+                                <select id="srtMidiInput" class="srt-select">
+                                    <option value="">No MIDI device connected</option>
+                                </select>
+                                <button class="srt-btn srt-btn-secondary" id="srtMidiRefreshBtn">Refresh Devices</button>
+                                <label class="srt-checkbox-label">
+                                    <input type="checkbox" id="srtMidiThrough">
+                                    <span class="srt-checkbox"></span>
+                                    MIDI Through
+                                </label>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Statistics Panel (Right) -->
+                <div class="srt-panel srt-statistics-panel" id="srtStatisticsPanel" aria-hidden="true">
+                    <div class="srt-panel-header">
+                        <h3>Statistics</h3>
+                        <button class="srt-panel-close" id="srtStatisticsPanelClose">×</button>
+                    </div>
+                    <div class="srt-panel-content">
+
+                        <!-- Session Stats -->
+                        <div class="srt-stat-group">
+                            <h4>Current Session</h4>
+                            <div class="srt-stat-items">
+                                <div class="srt-stat-item">
+                                    <span class="srt-stat-label">Duration</span>
+                                    <span class="srt-stat-value" id="srtStatDuration">00:00</span>
+                                </div>
+                                <div class="srt-stat-item">
+                                    <span class="srt-stat-label">Notes Played</span>
+                                    <span class="srt-stat-value" id="srtStatNotesPlayed">0</span>
+                                </div>
+                                <div class="srt-stat-item">
+                                    <span class="srt-stat-label">Correct Notes</span>
+                                    <span class="srt-stat-value" id="srtStatCorrect">0</span>
+                                </div>
+                                <div class="srt-stat-item">
+                                    <span class="srt-stat-label">Incorrect Notes</span>
+                                    <span class="srt-stat-value" id="srtStatIncorrect">0</span>
+                                </div>
+                                <div class="srt-stat-item">
+                                    <span class="srt-stat-label">Accuracy</span>
+                                    <span class="srt-stat-value" id="srtStatAccuracy">0%</span>
+                                </div>
+                                <div class="srt-stat-item">
+                                    <span class="srt-stat-label">Current Streak</span>
+                                    <span class="srt-stat-value" id="srtStatStreak">0</span>
+                                </div>
+                                <div class="srt-stat-item">
+                                    <span class="srt-stat-label">Best Streak</span>
+                                    <span class="srt-stat-value" id="srtStatBestStreak">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Overall Stats -->
+                        <div class="srt-stat-group">
+                            <h4>Overall Performance</h4>
+                            <div class="srt-stat-items">
+                                <div class="srt-stat-item">
+                                    <span class="srt-stat-label">Total Sessions</span>
+                                    <span class="srt-stat-value" id="srtStatTotalSessions">0</span>
+                                </div>
+                                <div class="srt-stat-item">
+                                    <span class="srt-stat-label">Total Practice Time</span>
+                                    <span class="srt-stat-value" id="srtStatTotalTime">0h 0m</span>
+                                </div>
+                                <div class="srt-stat-item">
+                                    <span class="srt-stat-label">Average Accuracy</span>
+                                    <span class="srt-stat-value" id="srtStatAvgAccuracy">0%</span>
+                                </div>
+                                <div class="srt-stat-item">
+                                    <span class="srt-stat-label">Level</span>
+                                    <span class="srt-stat-value" id="srtStatLevel">1</span>
+                                </div>
+                                <div class="srt-stat-item">
+                                    <span class="srt-stat-label">Experience Points</span>
+                                    <span class="srt-stat-value" id="srtStatXP">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Chart -->
+                        <div class="srt-stat-group">
+                            <h4>Progress Chart</h4>
+                            <canvas id="srtProgressChart" class="srt-progress-chart"></canvas>
+                        </div>
+
+                        <!-- Achievements -->
+                        <div class="srt-stat-group">
+                            <h4>Recent Achievements</h4>
+                            <div class="srt-achievements" id="srtAchievements">
+                                <p class="srt-no-achievements">No achievements yet. Start practicing!</p>
+                            </div>
+                        </div>
+
+                        <div class="srt-stat-actions">
+                            <button class="srt-btn srt-btn-danger" id="srtResetStatsBtn">Reset Statistics</button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Staff Container - GRAND STAFF PAR DÉFAUT -->
+                <div class="srt-staff-container" id="srtStaffContainer">
+                    <canvas id="srtStaffCanvas" class="srt-staff-canvas" width="1200" height="400"></canvas>
+
+                    <!-- Playhead for Scroll Mode -->
+                    <div class="srt-playhead" id="srtPlayhead" style="display: none;"></div>
+
+                    <!-- Overlay for feedback -->
+                    <div class="srt-staff-overlay" id="srtStaffOverlay">
+                        <div class="srt-feedback" id="srtFeedback"></div>
+                    </div>
+                </div>
+
+                <!-- Virtual Piano - 88 keys (A0-C8) -->
+                <div class="srt-piano-container" id="srtPianoContainer">
+
+                    <!-- Piano Controls -->
+                    <div class="srt-piano-controls">
+                        <div class="srt-piano-controls-left">
+                            <div class="srt-octave-control">
+                                <label class="srt-piano-label">Display</label>
+                                <select id="srtOctaveSelect" class="srt-select srt-compact">
+                                    <option value="5">5 Octaves</option>
+                                    <option value="7" selected>7 Octaves (88 keys)</option>
+                                </select>
+                            </div>
+
+                            <!-- Note Names Toggle -->
+                            <div class="srt-note-names-control">
+                                <label class="srt-checkbox-label">
+                                    <input type="checkbox" id="srtPianoNoteNames" checked>
+                                    <span class="srt-checkbox"></span>
+                                    Show Labels
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="srt-piano-controls-center">
+                            <div class="srt-piano-info">
+                                <span class="srt-piano-status" id="srtPianoStatus">
+                                    Connect MIDI keyboard or use computer keys (A-L) • ALT = Sustain
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="srt-piano-controls-right">
+                            <!-- Sound Selection -->
+                            <div class="srt-sound-control">
+                                <label class="srt-piano-label">Sound</label>
+                                <select id="srtSoundSelect" class="srt-select srt-compact">
+                                    <option value="salamander" selected>Grand Piano</option>
+                                    <option value="electric">Electric Piano</option>
+                                    <option value="organ">Organ</option>
+                                    <option value="synth">Synth</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Piano Keyboard - Will be generated by JavaScript -->
+                    <div class="srt-piano-keyboard" id="srtPianoKeyboard">
+                        <!-- 88 keys will be dynamically generated (A0 to C8, MIDI 21-108) -->
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Mobile Orientation Notice -->
+        <div class="srt-orientation-notice" id="srtOrientationNotice" style="display: none;">
+            <div class="srt-orientation-content">
+                <div class="srt-orientation-icon">📱</div>
+                <h3>Please Rotate Your Device</h3>
+                <p>Sight Reading Training works best in landscape orientation.</p>
+            </div>
+        </div>
+
+        <?php
+    }
+
+    // Get user settings with defaults
+    private function get_user_settings($user_id = 0) {
+        if (!$user_id) {
+            $user_id = get_current_user_id();
+        }
+
+        $defaults = array(
+            'staff_type' => 'grand',
+            'difficulty' => 'elementary',
+            'tempo' => 100,
+            'volume' => 75,
+            'metronome_enabled' => false,
+            'sound_pack' => 'salamander',
+            'notation_system' => 'international',
+            'display_notes' => true,
+            'octave_count' => 7,
+            'key_signature' => 'C',
+            'note_range_min' => 'C3',
+            'note_range_max' => 'C6',
+            'notes_count' => 2,
+            'hands_count' => 2,
+            'generator_type' => 'random',
+            'midi_device' => '',
+            'midi_through' => false,
+            'mode' => 'wait'
         );
 
-        // Bravura Music Font
-        wp_enqueue_style(
-            'srt-bravura-font',
-            'https://cdn.jsdelivr.net/npm/@vexflow-fonts/bravura/bravura.css',
-            array(),
-            null
+        if ($user_id > 0) {
+            $user_settings = get_user_meta($user_id, 'srt_user_settings', true);
+            if (is_array($user_settings)) {
+                $defaults = array_merge($defaults, $user_settings);
+            }
+        }
+
+        return $defaults;
+    }
+
+    // Get user statistics with defaults
+    private function get_user_stats($user_id = 0) {
+        if (!$user_id) {
+            $user_id = get_current_user_id();
+        }
+
+        $defaults = array(
+            'total_sessions' => 0,
+            'total_notes_played' => 0,
+            'total_correct_notes' => 0,
+            'total_incorrect_notes' => 0,
+            'total_practice_time' => 0,
+            'average_accuracy' => 0,
+            'best_streak' => 0,
+            'level' => 1,
+            'experience_points' => 0,
+            'achievements' => array(),
+            'session_history' => array()
         );
 
-        // CSS Principal
-        wp_enqueue_style(
-            'srt-styles',
-            get_stylesheet_directory_uri() . '/assets/sightreading/sightreading.css',
-            array(),
-            self::VERSION
-        );
+        if ($user_id > 0) {
+            $user_stats = get_user_meta($user_id, 'srt_user_stats', true);
+            if (is_array($user_stats)) {
+                $defaults = array_merge($defaults, $user_stats);
+            }
+        }
 
-        // Tone.js (Audio Engine)
-        wp_enqueue_script(
-            'tone-js',
-            'https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js',
+        return $defaults;
+    }
+
+    // Get translations (for future internationalization)
+    private function get_translations() {
+        return array(
+            'loading' => 'Loading...',
+            'play' => 'Play',
+            'pause' => 'Pause',
+            'stop' => 'Stop',
+            'reset' => 'Reset',
+            'correct' => 'Correct!',
+            'incorrect' => 'Try Again',
+            'well_done' => 'Well Done!',
+            'keep_going' => 'Keep Going!',
+            'excellent' => 'Excellent!',
+            'perfect' => 'Perfect!',
+            'lets_play' => "Let's Play!"
+        );
+    }
+
+    // AJAX handler for saving session data
+    public function ajax_save_session() {
+        check_ajax_referer('srt_nonce', 'nonce');
+
+        $user_id = get_current_user_id();
+        $session_data = json_decode(stripslashes($_POST['session_data']), true);
+
+        if ($user_id > 0 && is_array($session_data)) {
+            // Update user stats
+            $user_stats = $this->get_user_stats($user_id);
+
+            // Calculate new stats
+            $user_stats['total_sessions']++;
+            $user_stats['total_notes_played'] += intval($session_data['total_notes']);
+            $user_stats['total_correct_notes'] += intval($session_data['correct_notes']);
+            $user_stats['total_incorrect_notes'] += intval($session_data['incorrect_notes']);
+            $user_stats['total_practice_time'] += intval($session_data['duration']);
+
+            // Update accuracy
+            if ($user_stats['total_notes_played'] > 0) {
+                $user_stats['average_accuracy'] = ($user_stats['total_correct_notes'] / $user_stats['total_notes_played']) * 100;
+            }
+
+            // Update best streak
+            if (intval($session_data['best_streak']) > $user_stats['best_streak']) {
+                $user_stats['best_streak'] = intval($session_data['best_streak']);
+            }
+
+            // Add session to history
+            $user_stats['session_history'][] = array(
+                'date' => current_time('mysql'),
+                'duration' => intval($session_data['duration']),
+                'correct_notes' => intval($session_data['correct_notes']),
+                'incorrect_notes' => intval($session_data['incorrect_notes']),
+                'accuracy' => $session_data['accuracy'],
+                'best_streak' => intval($session_data['best_streak']),
+                'difficulty' => sanitize_text_field($session_data['difficulty']),
+                'mode' => sanitize_text_field($session_data['mode'])
+            );
+
+            // Keep only last 50 sessions
+            if (count($user_stats['session_history']) > 50) {
+                $user_stats['session_history'] = array_slice($user_stats['session_history'], -50);
+            }
+
+            // Calculate experience points and level
+            $xp_gained = intval($session_data['correct_notes']) * 10 + intval($session_data['best_streak']) * 5;
+            $user_stats['experience_points'] += $xp_gained;
+            $user_stats['level'] = floor($user_stats['experience_points'] / 1000) + 1;
+
+            // Save updated stats
+            update_user_meta($user_id, 'srt_user_stats', $user_stats);
+
+            wp_send_json_success(array(
+                'message' => 'Session saved successfully',
+                'xp_gained' => $xp_gained,
+                'new_level' => $user_stats['level'],
+                'stats' => $user_stats
+            ));
+        }
+
+        wp_send_json_error('Invalid session data');
+    }
+
+    // AJAX handler for getting stats
+    public function ajax_get_stats() {
+        check_ajax_referer('srt_nonce', 'nonce');
+
+        $user_id = get_current_user_id();
+        $user_stats = $this->get_user_stats($user_id);
+
+        wp_send_json_success($user_stats);
+    }
+
+    // AJAX handler for updating achievements
+    public function ajax_update_achievement() {
+        check_ajax_referer('srt_nonce', 'nonce');
+
+        $user_id = get_current_user_id();
+        $achievement_id = sanitize_text_field($_POST['achievement_id']);
+
+        if ($user_id > 0 && isset($this->achievements[$achievement_id])) {
+            $user_stats = $this->get_user_stats($user_id);
+
+            if (!in_array($achievement_id, $user_stats['achievements'])) {
+                $user_stats['achievements'][] = $achievement_id;
+                $user_stats['experience_points'] += $this->achievements[$achievement_id]['points'];
+                $user_stats['level'] = floor($user_stats['experience_points'] / 1000) + 1;
+
+                update_user_meta($user_id, 'srt_user_stats', $user_stats);
+
+                wp_send_json_success(array(
+                    'achievement' => $this->achievements[$achievement_id],
+                    'xp_gained' => $this->achievements[$achievement_id]['points'],
+                    'new_level' => $user_stats['level']
+                ));
+            }
+        }
+
+        wp_send_json_error('Invalid achievement');
+    }
+}
+
+// Initialize the plugin - Complete initialization
+function init_pianomode_sightreading() {
+    global $pianomode_sightreading;
+
+    // Créer l'instance seulement si elle n'existe pas
+    if (!isset($pianomode_sightreading)) {
+        $pianomode_sightreading = new PianoMode_SightReading_Game();
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('PianoMode Sight Reading Game initialized successfully - Version 2.0.0');
+        }
+    }
+}
+
+// Initialize early in WordPress lifecycle
+add_action('init', 'init_pianomode_sightreading', 5);
+
+// Force Tone.js to load globally (critical for audio engine)
+add_action('wp_enqueue_scripts', function() {
+    if (!is_admin()) {
+        wp_enqueue_script('tonejs',
+            'https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js',
             array(),
             '14.8.49',
             true
         );
-
-        // Chart.js (pour les statistiques)
-        wp_enqueue_script(
-            'chart-js',
-            'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js',
-            array(),
-            '3.9.1',
-            true
-        );
-
-        // jQuery (déjà inclus dans WordPress)
-        wp_enqueue_script('jquery');
-
-        // JavaScript - Chord Generators
-        wp_enqueue_script(
-            'srt-chord-generators',
-            get_stylesheet_directory_uri() . '/assets/sightreading/sightreading-chord-generators.js',
-            array('jquery', 'tone-js'),
-            self::VERSION,
-            true
-        );
-
-        // JavaScript - Songs Library
-        wp_enqueue_script(
-            'srt-songs',
-            get_stylesheet_directory_uri() . '/assets/sightreading/sightreading-songs.js',
-            array('jquery'),
-            self::VERSION,
-            true
-        );
-
-        // JavaScript - Main Engine
-        wp_enqueue_script(
-            'srt-engine',
-            get_stylesheet_directory_uri() . '/assets/sightreading/sightreading-engine.js',
-            array('jquery', 'tone-js', 'srt-chord-generators', 'srt-songs'),
-            self::VERSION,
-            true
-        );
-
-        // Localiser le script avec des données WordPress
-        wp_localize_script('srt-engine', 'srtConfig', array(
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('srt_nonce'),
-            'userId' => get_current_user_id(),
-            'isLoggedIn' => is_user_logged_in(),
-            'assetsPath' => get_stylesheet_directory_uri() . '/assets/sightreading/',
-            'version' => self::VERSION
-        ));
     }
+}, 5); // High priority to load first
 
-    /**
-     * Sauvegarder les statistiques via AJAX
-     */
-    public function ajax_save_stats() {
-        check_ajax_referer('srt_nonce', 'nonce');
-
-        $user_id = get_current_user_id();
-        if (!$user_id) {
-            wp_send_json_error('User not logged in');
-            return;
-        }
-
-        $stats = isset($_POST['stats']) ? json_decode(stripslashes($_POST['stats']), true) : array();
-
-        // Sauvegarder dans user meta
-        update_user_meta($user_id, 'srt_stats', $stats);
-
-        wp_send_json_success(array('message' => 'Stats saved successfully'));
+// Helper functions for external use
+function srt_get_user_stats($user_id = 0) {
+    global $pianomode_sightreading;
+    if ($pianomode_sightreading) {
+        return $pianomode_sightreading->get_user_stats($user_id);
     }
-
-    /**
-     * Rendu du shortcode
-     */
-    public function render_shortcode($atts) {
-        // Attributs par défaut
-        $atts = shortcode_atts(array(
-            'mode' => 'wait',
-            'difficulty' => 'beginner',
-            'theme' => 'dark'
-        ), $atts);
-
-        ob_start();
-        $this->render_html();
-        return ob_get_clean();
-    }
-
-    /**
-     * Rendu HTML complet de l'application
-     */
-    private function render_html() {
-        ?>
-<!-- ============================================
-     PIANOMODE SIGHT READING TRAINING APPLICATION
-     Version: <?php echo esc_attr(self::VERSION); ?>
-     ============================================ -->
-
-<div id="sightReadingGame" class="srt-root-container" data-version="<?php echo esc_attr(self::VERSION); ?>">
-
-    <!-- ========== ÉCRAN DE CHARGEMENT ========== -->
-    <div id="srtLoadingOverlay" class="srt-loading-overlay">
-        <div class="srt-loading-content">
-            <!-- Logo PianoMode -->
-            <div class="srt-logo-container">
-                <img src="<?php echo esc_url(get_stylesheet_directory_uri() . '/assets/images/Logo-def_NOIR.png'); ?>"
-                     alt="PianoMode"
-                     class="srt-loading-logo">
-            </div>
-
-            <!-- Titre -->
-            <h1 class="srt-loading-title">Sight Reading Training</h1>
-            <p class="srt-loading-subtitle">Loading audio samples and initializing...</p>
-
-            <!-- Barre de progression -->
-            <div class="srt-progress-container">
-                <div class="srt-progress-bar">
-                    <div id="srtProgressFill" class="srt-progress-fill"></div>
-                </div>
-                <p id="srtProgressText" class="srt-progress-text">0%</p>
-            </div>
-
-            <!-- Tips interactifs -->
-            <div class="srt-tips-container">
-                <p class="srt-tip" id="srtCurrentTip">
-                    💡 Tip: Start with "Wait Mode" to practice note-by-note
-                </p>
-            </div>
-
-            <!-- Bouton Let's Play (désactivé au début) -->
-            <button id="srtLetsPlayBtn" class="srt-btn-primary srt-btn-large" disabled>
-                <span class="srt-btn-text">Let's Play!</span>
-                <span class="srt-btn-icon">🎹</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- ========== INTERFACE PRINCIPALE ========== -->
-    <div id="srtMainInterface" class="srt-main-interface" style="display: none;">
-
-        <!-- Container principal (échapper au wrapper WordPress) -->
-        <div class="srt-container">
-
-            <!-- ========== TOOLBAR PRINCIPALE ========== -->
-            <div class="srt-toolbar-main">
-                <div class="srt-toolbar-left">
-                    <img src="<?php echo esc_url(get_stylesheet_directory_uri() . '/assets/images/Logo-def_NOIR.png'); ?>"
-                         alt="PianoMode"
-                         class="srt-logo">
-                    <h1 class="srt-title">Sight Reading Training</h1>
-                </div>
-
-                <div class="srt-toolbar-center">
-                    <div class="srt-stats-display">
-                        <div class="srt-stat-item">
-                            <span class="srt-stat-label">Hits:</span>
-                            <span class="srt-stat-value" id="srtHitsValue">0</span>
-                        </div>
-                        <div class="srt-stat-item">
-                            <span class="srt-stat-label">Misses:</span>
-                            <span class="srt-stat-value srt-stat-error" id="srtMissesValue">0</span>
-                        </div>
-                        <div class="srt-stat-item">
-                            <span class="srt-stat-label">Streak:</span>
-                            <span class="srt-stat-value srt-stat-gold" id="srtStreakValue">0</span>
-                        </div>
-                        <div class="srt-stat-item">
-                            <span class="srt-stat-label">Accuracy:</span>
-                            <span class="srt-stat-value" id="srtAccuracyValue">100%</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="srt-toolbar-right">
-                    <div class="srt-toolbar-buttons">
-                        <button id="srtPlayBtn" class="srt-btn-icon" title="Play (Space)" aria-label="Play">
-                            <span class="srt-icon">▶</span>
-                        </button>
-                        <button id="srtPauseBtn" class="srt-btn-icon" title="Pause (Space)" aria-label="Pause" style="display: none;">
-                            <span class="srt-icon">⏸</span>
-                        </button>
-                        <button id="srtStopBtn" class="srt-btn-icon" title="Stop" aria-label="Stop">
-                            <span class="srt-icon">⏹</span>
-                        </button>
-                        <button id="srtResetBtn" class="srt-btn-icon" title="New Exercise (N)" aria-label="Reset">
-                            <span class="srt-icon">↺</span>
-                        </button>
-                        <button id="srtSettingsBtn" class="srt-btn-icon" title="Settings (S)" aria-label="Settings">
-                            <span class="srt-icon">⚙</span>
-                        </button>
-                        <button id="srtStatsBtn" class="srt-btn-icon" title="Statistics (T)" aria-label="Stats">
-                            <span class="srt-icon">📊</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ========== CONTROL BAR ========== -->
-            <div class="srt-control-bar">
-                <div class="srt-control-group">
-                    <label class="srt-label">Mode</label>
-                    <div class="srt-mode-selector">
-                        <button class="srt-mode-btn active" data-mode="wait" title="Wait Mode: Note-by-note validation">
-                            <span class="srt-mode-icon">⏸</span>
-                            <span class="srt-mode-text">Wait</span>
-                        </button>
-                        <button class="srt-mode-btn" data-mode="scroll" title="Scroll Mode: Continuous scrolling">
-                            <span class="srt-mode-icon">▶</span>
-                            <span class="srt-mode-text">Scroll</span>
-                        </button>
-                        <button class="srt-mode-btn" data-mode="free" title="Free Play: No validation">
-                            <span class="srt-mode-icon">🎹</span>
-                            <span class="srt-mode-text">Free</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="srt-control-group">
-                    <label class="srt-label" for="srtTempoSlider">Tempo</label>
-                    <div class="srt-tempo-group">
-                        <input id="srtTempoSlider" type="range" min="40" max="200" value="100" step="1" aria-label="Tempo control">
-                        <span id="srtTempoValue" class="srt-value-display">100 BPM</span>
-                    </div>
-                </div>
-
-                <div class="srt-control-group">
-                    <button id="srtMetronomeBtn" class="srt-btn-toggle" title="Metronome (M)" aria-label="Toggle Metronome">
-                        <span class="srt-icon">🎵</span>
-                        <span class="srt-label">Metronome</span>
-                    </button>
-                </div>
-
-                <div class="srt-control-group">
-                    <label class="srt-label" for="srtDifficultySelect">Difficulty</label>
-                    <select id="srtDifficultySelect" class="srt-select" aria-label="Difficulty level">
-                        <option value="beginner">Beginner</option>
-                        <option value="intermediate">Intermediate</option>
-                        <option value="advanced">Advanced</option>
-                        <option value="expert">Expert</option>
-                    </select>
-                </div>
-
-                <div class="srt-control-group">
-                    <label class="srt-label" for="srtVolume">Volume</label>
-                    <div class="srt-volume-group">
-                        <span class="srt-icon">🔊</span>
-                        <input id="srtVolume" type="range" min="0" max="100" value="75" step="1" aria-label="Volume control">
-                        <span id="srtVolumeValue" class="srt-value-display">75%</span>
-                    </div>
-                </div>
-
-                <div class="srt-control-group">
-                    <button id="srtMidiConnectBtn" class="srt-btn-midi" title="MIDI Connection" aria-label="MIDI Connection">
-                        <span class="srt-midi-status"></span>
-                        <span class="srt-label">MIDI</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- ========== ZONE CENTRALE (Canvas + Staff) ========== -->
-            <div class="srt-center-area">
-                <div class="srt-score-container">
-                    <!-- Canvas principal pour la portée musicale -->
-                    <!-- Hauteur réduite: 2 portées (140px) + marges (20px) = 160px MAX -->
-                    <canvas id="srtScoreCanvas" width="1200" height="160" aria-label="Musical staff display"></canvas>
-
-                    <!-- Bande verticale FIXE dorée (mode Scroll) -->
-                    <div id="srtPlayhead" class="srt-playhead" style="display: none;"></div>
-
-                    <!-- Layer de feedback pour notes incorrectes -->
-                    <div id="srtFeedbackLayer" class="srt-feedback-layer"></div>
-
-                    <!-- Brackets pour grand staff -->
-                    <div class="srt-staff-bracket-left"></div>
-                    <div class="srt-staff-bracket-right"></div>
-                </div>
-            </div>
-
-            <!-- ========== PIANO VIRTUEL 88 TOUCHES ========== -->
-            <div id="srtPianoContainer" class="srt-piano-container">
-                <!-- Contrôles d'octaves -->
-                <div class="srt-piano-controls">
-                    <button class="srt-octave-btn" data-octaves="5" title="Show 5 octaves">
-                        <span>5 Octaves</span>
-                    </button>
-                    <button class="srt-octave-btn active" data-octaves="7" title="Show 7 octaves">
-                        <span>7 Octaves</span>
-                    </button>
-                    <button class="srt-octave-btn" data-octaves="all" title="Show all 88 keys">
-                        <span>88 Keys</span>
-                    </button>
-
-                    <div class="srt-piano-info-right">
-                        <span class="srt-sustain-indicator" id="srtSustainIndicator">
-                            <span class="srt-icon">🎹</span>
-                            <span class="srt-text">Sustain (ALT)</span>
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Clavier piano (généré dynamiquement par JavaScript) -->
-                <div class="srt-piano-keyboard" id="srtPianoKeyboard" role="application" aria-label="Virtual Piano Keyboard">
-                    <!-- Les 88 touches seront générées ici par JavaScript -->
-                </div>
-
-                <!-- Informations -->
-                <div class="srt-piano-info">
-                    <span class="srt-info-text">Connect MIDI device or use Computer Keyboard (A-L keys)</span>
-                    <span class="srt-keyboard-hint">Keyboard mapping: QWERTY (C4=Q, D4=W, E4=E, ...)</span>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- ========== PANNEAU SETTINGS (GAUCHE, 400px, CACHÉ PAR DÉFAUT) ========== -->
-        <div id="srtSettingsPanel" class="srt-panel srt-panel-left" role="dialog" aria-labelledby="srtSettingsPanelTitle" aria-hidden="true">
-            <div class="srt-panel-header">
-                <h3 id="srtSettingsPanelTitle" class="srt-panel-title">Settings</h3>
-                <button class="srt-panel-close" id="srtSettingsPanelClose" aria-label="Close Settings Panel">
-                    <span>×</span>
-                </button>
-            </div>
-
-            <div class="srt-panel-content">
-                <!-- Exercise Type -->
-                <div class="srt-setting-group">
-                    <label class="srt-setting-label">Exercise Type</label>
-                    <div class="srt-btn-group" role="group" aria-label="Exercise Type">
-                        <button class="srt-btn-option active" data-generator="random" title="Random notes">Random</button>
-                        <button class="srt-btn-option" data-generator="scales" title="Musical scales">Scales</button>
-                        <button class="srt-btn-option" data-generator="triads" title="Simple triads">Triads</button>
-                        <button class="srt-btn-option" data-generator="chords" title="Complex chords">Chords</button>
-                        <button class="srt-btn-option" data-generator="arpeggios" title="Arpeggios">Arpeggios</button>
-                        <button class="srt-btn-option" data-generator="progression" title="Chord progressions">Progressions</button>
-                        <button class="srt-btn-option" data-generator="intervals" title="Intervals training">Intervals</button>
-                    </div>
-                </div>
-
-                <!-- Note Density -->
-                <div class="srt-setting-group">
-                    <label class="srt-setting-label" for="srtNoteDensity">
-                        Note Density
-                        <span class="srt-help-icon" title="Number of simultaneous notes">?</span>
-                    </label>
-                    <div class="srt-slider-group">
-                        <input type="range" id="srtNoteDensity" min="1" max="4" value="1" step="1" aria-label="Note density">
-                        <span id="srtNoteDensityValue" class="srt-value-label">Single Notes</span>
-                    </div>
-                </div>
-
-                <!-- Rhythm Complexity -->
-                <div class="srt-setting-group">
-                    <label class="srt-setting-label">Rhythm Complexity</label>
-                    <div class="srt-btn-group" role="group" aria-label="Rhythm Complexity">
-                        <button class="srt-btn-option active" data-rhythm="simple" title="Whole, half, quarter notes">Simple</button>
-                        <button class="srt-btn-option" data-rhythm="moderate" title="Add eighth notes">Moderate</button>
-                        <button class="srt-btn-option" data-rhythm="complex" title="Add sixteenth notes and syncopation">Complex</button>
-                    </div>
-                </div>
-
-                <!-- Staff Display -->
-                <div class="srt-setting-group">
-                    <label class="srt-setting-label">Staff Display</label>
-                    <div class="srt-btn-group" role="group" aria-label="Staff Display">
-                        <button class="srt-btn-option" data-clef="treble" title="Treble clef only">Treble</button>
-                        <button class="srt-btn-option" data-clef="bass" title="Bass clef only">Bass</button>
-                        <button class="srt-btn-option active" data-clef="grand" title="Grand staff (both clefs)">Grand Staff</button>
-                    </div>
-                </div>
-
-                <!-- Key Signature -->
-                <div class="srt-setting-group">
-                    <label class="srt-setting-label" for="srtKeySignature">Key Signature</label>
-                    <select id="srtKeySignature" class="srt-select" aria-label="Key signature">
-                        <option value="C" selected>C Major / A minor</option>
-                        <option value="G">G Major / E minor (1♯)</option>
-                        <option value="D">D Major / B minor (2♯)</option>
-                        <option value="A">A Major / F♯ minor (3♯)</option>
-                        <option value="E">E Major / C♯ minor (4♯)</option>
-                        <option value="B">B Major / G♯ minor (5♯)</option>
-                        <option value="F#">F♯ Major / D♯ minor (6♯)</option>
-                        <option value="F">F Major / D minor (1♭)</option>
-                        <option value="Bb">B♭ Major / G minor (2♭)</option>
-                        <option value="Eb">E♭ Major / C minor (3♭)</option>
-                        <option value="Ab">A♭ Major / F minor (4♭)</option>
-                        <option value="Db">D♭ Major / B♭ minor (5♭)</option>
-                        <option value="Gb">G♭ Major / E♭ minor (6♭)</option>
-                    </select>
-                </div>
-
-                <!-- Note Names Display -->
-                <div class="srt-setting-group">
-                    <label class="srt-setting-label" for="srtNoteNamesDisplay">Note Names on Piano</label>
-                    <select id="srtNoteNamesDisplay" class="srt-select" aria-label="Note names display">
-                        <option value="none">Hidden</option>
-                        <option value="us" selected>US (C, D, E...)</option>
-                        <option value="int">International (Do, Re, Mi...)</option>
-                        <option value="both">Both Systems</option>
-                    </select>
-                </div>
-
-                <!-- Note Range -->
-                <div class="srt-setting-group">
-                    <label class="srt-setting-label">Note Range</label>
-                    <div class="srt-range-controls">
-                        <div class="srt-range-item">
-                            <label for="srtRangeMin">Min:</label>
-                            <select id="srtRangeMin" class="srt-select-small">
-                                <option value="36">C2</option>
-                                <option value="48" selected>C3</option>
-                                <option value="60">C4</option>
-                            </select>
-                        </div>
-                        <div class="srt-range-item">
-                            <label for="srtRangeMax">Max:</label>
-                            <select id="srtRangeMax" class="srt-select-small">
-                                <option value="72">C5</option>
-                                <option value="84" selected>C6</option>
-                                <option value="96">C7</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MIDI Configuration (EN BAS) -->
-                <div class="srt-setting-group srt-midi-section">
-                    <h4 class="srt-section-title">MIDI Configuration</h4>
-
-                    <div class="srt-midi-status-box">
-                        <div class="srt-midi-indicator" id="srtMidiIndicator"></div>
-                        <span id="srtMidiStatusText" class="srt-midi-status-text">No device connected</span>
-                    </div>
-
-                    <label class="srt-setting-label" for="srtMidiInput">MIDI Input Device</label>
-                    <select id="srtMidiInput" class="srt-select" aria-label="MIDI input device">
-                        <option value="">Select MIDI Input...</option>
-                    </select>
-
-                    <label class="srt-setting-label" for="srtMidiChannel">MIDI Channel</label>
-                    <select id="srtMidiChannel" class="srt-select" aria-label="MIDI channel">
-                        <option value="all" selected>All Channels</option>
-                        <?php for ($i = 1; $i <= 16; $i++): ?>
-                        <option value="<?php echo $i; ?>">Channel <?php echo $i; ?></option>
-                        <?php endfor; ?>
-                    </select>
-
-                    <button id="srtMidiRefresh" class="srt-btn-secondary srt-btn-block" aria-label="Refresh MIDI devices">
-                        <span class="srt-icon">🔄</span>
-                        <span>Refresh Devices</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========== PANNEAU STATS (DROITE, 400px, CACHÉ PAR DÉFAUT) ========== -->
-        <div id="srtStatsPanel" class="srt-panel srt-panel-right" role="dialog" aria-labelledby="srtStatsPanelTitle" aria-hidden="true">
-            <div class="srt-panel-header">
-                <h3 id="srtStatsPanelTitle" class="srt-panel-title">Performance Stats</h3>
-                <button class="srt-panel-close" id="srtStatsPanelClose" aria-label="Close Stats Panel">
-                    <span>×</span>
-                </button>
-            </div>
-
-            <div class="srt-panel-content">
-                <!-- Session Stats -->
-                <div class="srt-stats-section">
-                    <h4 class="srt-stats-section-title">Current Session</h4>
-                    <div class="srt-stats-grid">
-                        <div class="srt-stat-row">
-                            <span class="srt-stat-label">Duration:</span>
-                            <span class="srt-stat-value" id="srtSessionDuration">00:00</span>
-                        </div>
-                        <div class="srt-stat-row">
-                            <span class="srt-stat-label">Notes Played:</span>
-                            <span class="srt-stat-value" id="srtNotesPlayed">0</span>
-                        </div>
-                        <div class="srt-stat-row">
-                            <span class="srt-stat-label">Accuracy:</span>
-                            <span class="srt-stat-value" id="srtAccuracyStat">100%</span>
-                        </div>
-                        <div class="srt-stat-row">
-                            <span class="srt-stat-label">Current Streak:</span>
-                            <span class="srt-stat-value srt-stat-gold" id="srtCurrentStreak">0</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Overall Stats -->
-                <div class="srt-stats-section">
-                    <h4 class="srt-stats-section-title">Overall Progress</h4>
-                    <div class="srt-stats-grid">
-                        <div class="srt-stat-row">
-                            <span class="srt-stat-label">Total Score:</span>
-                            <span class="srt-stat-value" id="srtTotalScore">0</span>
-                        </div>
-                        <div class="srt-stat-row">
-                            <span class="srt-stat-label">Best Streak:</span>
-                            <span class="srt-stat-value srt-stat-gold" id="srtBestStreak">0</span>
-                        </div>
-                        <div class="srt-stat-row">
-                            <span class="srt-stat-label">Practice Time:</span>
-                            <span class="srt-stat-value" id="srtTotalTime">0h 0m</span>
-                        </div>
-                        <div class="srt-stat-row">
-                            <span class="srt-stat-label">Level:</span>
-                            <span class="srt-stat-value" id="srtUserLevel">1</span>
-                        </div>
-                    </div>
-
-                    <button id="srtResetStatsBtn" class="srt-btn-danger srt-btn-block" aria-label="Reset all statistics">
-                        <span class="srt-icon">⚠</span>
-                        <span>Reset All Stats</span>
-                    </button>
-                </div>
-
-                <!-- Progress Chart -->
-                <div class="srt-stats-section">
-                    <h4 class="srt-stats-section-title">Weekly Progress</h4>
-                    <div class="srt-chart-container">
-                        <canvas id="srtProgressChart" width="350" height="200" aria-label="Weekly progress chart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Achievements -->
-                <div class="srt-stats-section">
-                    <h4 class="srt-stats-section-title">Recent Achievements</h4>
-                    <div id="srtRecentAchievements" class="srt-achievements-list">
-                        <!-- Badges générés dynamiquement -->
-                        <p class="srt-no-achievements">Start playing to unlock achievements!</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-</div>
-
-<!-- End Sight Reading Game -->
-        <?php
-    }
+    return array();
 }
 
-// Initialiser l'application
-new PianoMode_SightReading_Main();
+function srt_save_user_setting($key, $value, $user_id = 0) {
+    if (!$user_id) {
+        $user_id = get_current_user_id();
+    }
+
+    if ($user_id > 0) {
+        $settings = get_user_meta($user_id, 'srt_user_settings', true) ?: array();
+        $settings[$key] = $value;
+        update_user_meta($user_id, 'srt_user_settings', $settings);
+        return true;
+    }
+
+    return false;
+}
+
+function srt_get_user_setting($key, $default = null, $user_id = 0) {
+    if (!$user_id) {
+        $user_id = get_current_user_id();
+    }
+
+    if ($user_id > 0) {
+        $settings = get_user_meta($user_id, 'srt_user_settings', true) ?: array();
+        return isset($settings[$key]) ? $settings[$key] : $default;
+    }
+
+    return $default;
+}
+
+?>
