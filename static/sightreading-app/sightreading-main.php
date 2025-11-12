@@ -232,18 +232,18 @@ class PianoMode_SightReading_Game {
                 true
             );
 
-            // Enqueue CSS
+            // Enqueue CSS - CORRECTED PATH
             wp_enqueue_style(
                 'sightreading-css',
-                get_stylesheet_directory_uri() . '/static/sightreading-app/sightreading.css',
+                get_stylesheet_directory_uri() . '/assets/Sightreading-game/sightreading.css',
                 array(),
                 $this->version
             );
 
-            // Enqueue JavaScript files in correct order
+            // Enqueue JavaScript files in correct order - CORRECTED PATHS
             wp_enqueue_script(
                 'sightreading-chord-generators',
-                get_stylesheet_directory_uri() . '/static/sightreading-app/sightreading-chord-generators.js',
+                get_stylesheet_directory_uri() . '/assets/Sightreading-game/sightreading-chord-generators.js',
                 array('jquery'),
                 $this->version,
                 true
@@ -251,7 +251,7 @@ class PianoMode_SightReading_Game {
 
             wp_enqueue_script(
                 'sightreading-songs',
-                get_stylesheet_directory_uri() . '/static/sightreading-app/sightreading-songs.js',
+                get_stylesheet_directory_uri() . '/assets/Sightreading-game/sightreading-songs.js',
                 array('jquery'),
                 $this->version,
                 true
@@ -259,7 +259,7 @@ class PianoMode_SightReading_Game {
 
             wp_enqueue_script(
                 'sightreading-engine',
-                get_stylesheet_directory_uri() . '/static/sightreading-app/sightreading-engine.js',
+                get_stylesheet_directory_uri() . '/assets/Sightreading-game/sightreading-engine.js',
                 array('jquery', 'tonejs', 'chartjs', 'sightreading-chord-generators', 'sightreading-songs'),
                 $this->version,
                 true
@@ -270,7 +270,7 @@ class PianoMode_SightReading_Game {
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('srt_nonce'),
                 'user_id' => get_current_user_id(),
-                'assets_url' => get_stylesheet_directory_uri() . '/static/sightreading-app/',
+                'assets_url' => get_stylesheet_directory_uri() . '/assets/Sightreading-game/',
                 'colors' => $this->colors,
                 'difficulties' => $this->difficulty_levels,
                 'achievements' => $this->achievements,

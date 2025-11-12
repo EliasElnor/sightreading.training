@@ -298,17 +298,19 @@
                 console.warn('⚠️ Engine not ready yet');
                 return;
             }
-            
+
             console.log('🚀 Starting Sight Reading Training...');
-            
-            // Hide loading overlay
-            $('#srtLoadingOverlay').fadeOut(500, () => {
-                $('#srtMainInterface').fadeIn(500);
+
+            // Hide loading screen - CORRECTED IDs to match PHP
+            $('#srtLoadingScreen').fadeOut(500, () => {
+                $('#srtHeader').show();
+                $('#srtToolbar').show();
+                $('#srtMainArea').show();
             });
-            
+
             // Initialize current mode
             this.setMode(this.settings.mode);
-            
+
             // Generate initial exercise
             this.generateNewExercise();
         }
