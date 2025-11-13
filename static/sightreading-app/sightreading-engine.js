@@ -235,10 +235,15 @@
 
                 // Initialize audio engine (non-blocking - continue even if it fails)
                 this.audioEngine = new AudioEngine();
-                this.audioEngine.initialize().catch(err => {
-                    console.warn('⚠️ Audio engine initialization failed (non-critical):', err);
+                try {
+                    this.audioEngine.initialize().catch(err => {
+                        console.warn('⚠️ Audio engine initialization failed (non-critical):', err);
+                        console.log('Application will continue without audio');
+                    });
+                } catch (err) {
+                    console.warn('⚠️ Audio engine initialization failed immediately (non-critical):', err);
                     console.log('Application will continue without audio');
-                });
+                }
                 this.showLoadingProgress(30, 'Setting up virtual piano...');
 
                 // Initialize virtual piano
@@ -445,36 +450,38 @@
                 }
 
                 // Create Salamander Grand Piano sampler
+                // IMPORTANT: Tone.js requires sharp notation (D#, F#) not flat (Ds, Fs)
+                // But the MP3 files are named Ds1.mp3, Fs1.mp3, etc.
                 this.piano = new Tone.Sampler({
                     urls: {
                         'A0': 'A0.mp3',
                         'C1': 'C1.mp3',
-                        'Ds1': 'Ds1.mp3',
-                        'Fs1': 'Fs1.mp3',
+                        'D#1': 'Ds1.mp3',  // Key is D#1, file is Ds1.mp3
+                        'F#1': 'Fs1.mp3',  // Key is F#1, file is Fs1.mp3
                         'A1': 'A1.mp3',
                         'C2': 'C2.mp3',
-                        'Ds2': 'Ds2.mp3',
-                        'Fs2': 'Fs2.mp3',
+                        'D#2': 'Ds2.mp3',
+                        'F#2': 'Fs2.mp3',
                         'A2': 'A2.mp3',
                         'C3': 'C3.mp3',
-                        'Ds3': 'Ds3.mp3',
-                        'Fs3': 'Fs3.mp3',
+                        'D#3': 'Ds3.mp3',
+                        'F#3': 'Fs3.mp3',
                         'A3': 'A3.mp3',
                         'C4': 'C4.mp3',
-                        'Ds4': 'Ds4.mp3',
-                        'Fs4': 'Fs4.mp3',
+                        'D#4': 'Ds4.mp3',
+                        'F#4': 'Fs4.mp3',
                         'A4': 'A4.mp3',
                         'C5': 'C5.mp3',
-                        'Ds5': 'Ds5.mp3',
-                        'Fs5': 'Fs5.mp3',
+                        'D#5': 'Ds5.mp3',
+                        'F#5': 'Fs5.mp3',
                         'A5': 'A5.mp3',
                         'C6': 'C6.mp3',
-                        'Ds6': 'Ds6.mp3',
-                        'Fs6': 'Fs6.mp3',
+                        'D#6': 'Ds6.mp3',
+                        'F#6': 'Fs6.mp3',
                         'A6': 'A6.mp3',
                         'C7': 'C7.mp3',
-                        'Ds7': 'Ds7.mp3',
-                        'Fs7': 'Fs7.mp3',
+                        'D#7': 'Ds7.mp3',
+                        'F#7': 'Fs7.mp3',
                         'A7': 'A7.mp3',
                         'C8': 'C8.mp3'
                     },

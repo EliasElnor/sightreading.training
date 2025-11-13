@@ -28,7 +28,7 @@ if (!defined('ABSPATH')) {
 
 class PianoMode_SightReading_Game {
 
-    private $version = '2.0.0';
+    private $version = '2.0.1';
     private $assets_loaded = false;
 
     // PianoMode color palette EXACTE
