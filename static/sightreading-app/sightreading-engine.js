@@ -229,59 +229,69 @@
         async initialize() {
             try {
                 console.log('🔧 Initializing all subsystems...');
-                
+
                 // Show loading screen
                 this.showLoadingProgress(0, 'Initializing audio engine...');
-                
-                // Initialize audio engine
+
+                // Initialize audio engine (non-blocking - continue even if it fails)
                 this.audioEngine = new AudioEngine();
-                await this.audioEngine.initialize();
-                this.showLoadingProgress(30, 'Loading piano samples...');
-                
+                this.audioEngine.initialize().catch(err => {
+                    console.warn('⚠️ Audio engine initialization failed (non-critical):', err);
+                    console.log('Application will continue without audio');
+                });
+                this.showLoadingProgress(30, 'Setting up virtual piano...');
+
                 // Initialize virtual piano
                 this.virtualPiano = new VirtualPiano(this);
                 this.virtualPiano.initialize();
                 this.showLoadingProgress(50, 'Setting up staff renderer...');
-                
+
                 // Initialize staff renderer
                 this.staffRenderer = new StaffRenderer(this);
                 this.staffRenderer.initialize();
                 this.showLoadingProgress(60, 'Configuring MIDI...');
-                
-                // Initialize MIDI handler
+
+                // Initialize MIDI handler (non-blocking)
                 this.midiHandler = new MIDIHandler(this);
-                await this.midiHandler.initialize();
+                this.midiHandler.initialize().catch(err => {
+                    console.warn('⚠️ MIDI initialization failed (non-critical):', err);
+                });
                 this.showLoadingProgress(70, 'Setting up keyboard input...');
-                
+
                 // Initialize keyboard input
                 this.keyboardInput = new KeyboardInput(this);
                 this.keyboardInput.initialize();
                 this.showLoadingProgress(80, 'Loading statistics...');
-                
+
                 // Initialize stats tracker
                 this.statsTracker = new StatsTracker(this);
                 this.statsTracker.initialize();
                 this.showLoadingProgress(90, 'Preparing interface...');
-                
+
                 // Initialize UI controller
                 this.uiController = new UIController(this);
                 this.uiController.initialize();
                 this.showLoadingProgress(100, 'Ready!');
-                
+
                 this.isReady = true;
 
                 console.log('✅ Sight Reading Engine initialized successfully!');
 
-                // Show and enable "Let's Play" button - CORRECTED
+                // Show and enable "Let's Play" button
                 setTimeout(() => {
                     $('#srtLoadingPercentage').text('100%');
                     $('#srtLoadingBar').css('width', '100%');
-                    $('#srtLetsPlayBtn').prop('disabled', false).show(); // Must call .show() to display it!
+                    $('#srtLetsPlayBtn').prop('disabled', false).show();
+                    console.log('🎯 Let\'s Play button is now visible and enabled');
                 }, 500);
-                
+
             } catch (error) {
                 console.error('❌ Failed to initialize engine:', error);
-                this.showError('Failed to initialize application. Please refresh the page.');
+                console.error('Error details:', error.message, error.stack);
+                this.showError('Failed to initialize application: ' + error.message);
+
+                // Still try to show the Let's Play button so user can attempt to start
+                $('#srtLetsPlayBtn').text('Try Anyway').prop('disabled', false).show();
             }
         }
 
@@ -426,8 +436,14 @@
 
         async initialize() {
             console.log('🔊 Initializing Audio Engine...');
-            
+
             try {
+                // Check if Tone.js is available
+                if (typeof Tone === 'undefined') {
+                    console.warn('⚠️ Tone.js not loaded - audio will not be available');
+                    return;
+                }
+
                 // Create Salamander Grand Piano sampler
                 this.piano = new Tone.Sampler({
                     urls: {
@@ -469,6 +485,7 @@
                     },
                     onerror: (error) => {
                         console.error('❌ Failed to load piano samples:', error);
+                        // Continue anyway - app can work without audio
                     }
                 });
 
@@ -491,7 +508,8 @@
 
             } catch (error) {
                 console.error('❌ Audio engine initialization failed:', error);
-                throw error;
+                // Don't throw - let the app continue without audio
+                console.log('Application will continue without audio playback');
             }
         }
 
@@ -537,9 +555,19 @@
 
         initialize() {
             console.log('🎹 Initializing Virtual Piano...');
-            
-            this.generateKeys();
-            this.attachEventListeners();
+
+            if (!this.container || this.container.length === 0) {
+                console.error('❌ Piano container #srtPianoKeyboard not found');
+                return;
+            }
+
+            try {
+                this.generateKeys();
+                this.attachEventListeners();
+                console.log('✅ Virtual Piano initialized');
+            } catch (error) {
+                console.error('❌ Failed to initialize Virtual Piano:', error);
+            }
         }
 
         generateKeys() {
@@ -672,18 +700,23 @@
 
         initialize() {
             if (!this.canvas || !this.ctx) {
-                console.error('❌ Canvas not found');
+                console.error('❌ Canvas #srtScoreCanvas not found');
                 return;
             }
-            
+
             console.log('🎼 Initializing Staff Renderer...');
-            
-            // Set canvas size
-            this.canvas.width = CONFIG.STAFF.CANVAS_WIDTH;
-            this.canvas.height = CONFIG.STAFF.GRAND_STAFF_HEIGHT;
-            
-            // Draw initial staff
-            this.drawGrandStaff();
+
+            try {
+                // Set canvas size
+                this.canvas.width = CONFIG.STAFF.CANVAS_WIDTH;
+                this.canvas.height = CONFIG.STAFF.GRAND_STAFF_HEIGHT;
+
+                // Draw initial staff
+                this.drawGrandStaff();
+                console.log('✅ Staff Renderer initialized');
+            } catch (error) {
+                console.error('❌ Failed to initialize Staff Renderer:', error);
+            }
         }
 
         drawGrandStaff() {
