@@ -28,7 +28,7 @@ if (!defined('ABSPATH')) {
 
 class PianoMode_SightReading_Game {
 
-    private $version = '2.0.1';
+    private $version = '2.0.2';
     private $assets_loaded = false;
 
     // PianoMode color palette EXACTE
@@ -362,11 +362,11 @@ class PianoMode_SightReading_Game {
                 </div>
             </div>
 
-            <!-- Top Header -->
-            <div class="srt-header" id="srtHeader">
+            <!-- Top Header (hidden by default until app starts) -->
+            <div class="srt-header" id="srtHeader" style="display: none;">
                 <div class="srt-header-content">
                     <div class="srt-header-left">
-                        <img src="https://pianomode.com/wp-content/uploads/2025/05/Logo-def_NOIR.png" alt="PianoMode" class="srt-header-logo">
+                        <img src="https://pianomode.com/wp-content/uploads/2025/11/cropped-ChatGPT-Image-Nov-10-2025-01_18_37-AM.png" alt="PianoMode" class="srt-header-logo">
                         <h1 class="srt-header-title">Sight Reading Training</h1>
                     </div>
                     <div class="srt-header-stats">
@@ -429,7 +429,8 @@ class PianoMode_SightReading_Game {
             </div>
 
             <!-- Control Toolbar -->
-            <div class="srt-toolbar" id="srtToolbar">
+            <!-- Toolbar (hidden by default until app starts) -->
+            <div class="srt-toolbar" id="srtToolbar" style="display: none;">
                 <div class="srt-toolbar-content">
 
                     <!-- Mode Selection -->
@@ -501,11 +502,11 @@ class PianoMode_SightReading_Game {
                 </div>
             </div>
 
-            <!-- Main Game Area -->
-            <div class="srt-main-area" id="srtMainArea">
+            <!-- Main Game Area (hidden by default until app starts) -->
+            <div class="srt-main-area" id="srtMainArea" style="display: none;">
 
                 <!-- Settings Panel (Left) -->
-                <div class="srt-panel srt-settings-panel" id="srtSettingsPanel" aria-hidden="true">
+                <div class="srt-panel srt-panel-left srt-settings-panel" id="srtSettingsPanel" aria-hidden="true">
                     <div class="srt-panel-header">
                         <h3>Settings</h3>
                         <button class="srt-panel-close" id="srtSettingsPanelClose">×</button>
@@ -627,10 +628,10 @@ class PianoMode_SightReading_Game {
                 </div>
 
                 <!-- Statistics Panel (Right) -->
-                <div class="srt-panel srt-statistics-panel" id="srtStatisticsPanel" aria-hidden="true">
+                <div class="srt-panel srt-panel-right srt-statistics-panel" id="srtStatsPanel" aria-hidden="true">
                     <div class="srt-panel-header">
                         <h3>Statistics</h3>
-                        <button class="srt-panel-close" id="srtStatisticsPanelClose">×</button>
+                        <button class="srt-panel-close" id="srtStatsPanelClose">×</button>
                     </div>
                     <div class="srt-panel-content">
 
@@ -719,7 +720,7 @@ class PianoMode_SightReading_Game {
 
                 <!-- Staff Container - GRAND STAFF PAR DÉFAUT -->
                 <div class="srt-staff-container" id="srtStaffContainer">
-                    <canvas id="srtStaffCanvas" class="srt-staff-canvas" width="1200" height="400"></canvas>
+                    <canvas id="srtScoreCanvas" class="srt-staff-canvas" width="1200" height="400"></canvas>
 
                     <!-- Playhead for Scroll Mode -->
                     <div class="srt-playhead" id="srtPlayhead" style="display: none;"></div>
