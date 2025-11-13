@@ -357,7 +357,7 @@ class PianoMode_SightReading_Game {
                         <p style="margin: 0; padding: 0 20px;">💡 Tip: Connect a MIDI keyboard for the best experience</p>
                     </div>
                     <button class="srt-btn srt-btn-primary srt-lets-play-btn" id="srtLetsPlayBtn" style="display: none; margin-top: 30px; padding: 18px 60px; font-size: 24px; font-weight: 700; background: #C59D3A; color: #0B0B0B; border: 2px solid #D4A942; border-radius: 12px; box-shadow: 0 4px 20px rgba(197, 157, 58, 0.4); cursor: pointer; transition: all 0.3s ease; min-width: 280px;">
-                        Commencer
+                        Let's Play
                     </button>
                 </div>
             </div>

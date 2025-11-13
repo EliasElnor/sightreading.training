@@ -164,7 +164,17 @@
                 $btn.off('click').on('click', () => {
                     console.log('🎯 Let\'s Play button clicked!');
                     this.hideLoadingScreen();
-                    this.startAnimationLoop();
+
+                    // RE-INITIALIZE canvas and piano NOW that interface is visible
+                    setTimeout(() => {
+                        console.log('🔄 Re-initializing canvas and piano with visible interface...');
+                        this.setupCanvas();
+                        this.setupPiano();
+                        this.setupRenderer();
+                        this.generateInitialNotes();
+                        this.startAnimationLoop();
+                        console.log('✅ Canvas and piano re-initialized!');
+                    }, 600); // Wait for fadeIn to complete
                 });
 
                 console.log('🎯 Let\'s Play button is now visible and clickable!');
@@ -1972,8 +1982,13 @@
         populateDevices() {
             // Populate input devices
             const inputSelect = document.getElementById('srtMidiInput');
+            if (!inputSelect) {
+                console.warn('⚠️ MIDI input select not found in DOM - skipping device population');
+                return;
+            }
+
             inputSelect.innerHTML = '<option value="none">No MIDI Device</option>';
-            
+
             this.midiAccess.inputs.forEach((input) => {
                 const option = document.createElement('option');
                 option.value = input.id;
@@ -2131,9 +2146,14 @@
         updateStatus(status) {
             const statusElement = document.getElementById('srtMidiStatus');
             const statusText = document.getElementById('srtMidiStatusText');
-            
+
+            if (!statusElement || !statusText) {
+                console.warn('⚠️ MIDI status elements not found in DOM - skipping status update');
+                return;
+            }
+
             statusElement.className = 'srt-status-indicator';
-            
+
             switch (status) {
                 case 'connected':
                     statusElement.classList.add('connected');
@@ -3148,7 +3168,7 @@
                     <div class="srt-loader-tips" id="srtLoadingTips" style="color: #D4A942; font-size: 20px !important; text-align: center; margin: 30px 0;">
                         <p style="margin: 0;">💡 Initializing application...</p>
                     </div>
-                    <button class="srt-btn srt-btn-primary srt-lets-play-btn" id="srtLetsPlayBtn" style="display: none; margin-top: 30px; padding: 18px 60px; font-size: 24px; font-weight: 700; background: #C59D3A; color: #0B0B0B; border: 2px solid #D4A942; border-radius: 12px; box-shadow: 0 4px 20px rgba(197, 157, 58, 0.4); cursor: pointer; transition: all 0.3s ease; min-width: 280px;">Commencer</button>
+                    <button class="srt-btn srt-btn-primary srt-lets-play-btn" id="srtLetsPlayBtn" style="display: none; margin-top: 30px; padding: 18px 60px; font-size: 24px; font-weight: 700; background: #C59D3A; color: #0B0B0B; border: 2px solid #D4A942; border-radius: 12px; box-shadow: 0 4px 20px rgba(197, 157, 58, 0.4); cursor: pointer; transition: all 0.3s ease; min-width: 280px;">Let's Play</button>
                 </div>
             </div>
         `;
