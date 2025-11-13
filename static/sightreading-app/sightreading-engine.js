@@ -3148,7 +3148,7 @@
                     <div class="srt-loader-tips" id="srtLoadingTips" style="color: #D4A942; font-size: 20px !important; text-align: center; margin: 30px 0;">
                         <p style="margin: 0;">💡 Initializing application...</p>
                     </div>
-                    <button class="srt-btn srt-lets-play-btn" id="srtLetsPlayBtn" style="display: none; margin-top: 40px; padding: 24px 80px !important; font-size: 36px !important; font-weight: 900 !important; background: linear-gradient(135deg, #C59D3A 0%, #D4A942 100%) !important; color: #0B0B0B !important; border: 4px solid #D4A942 !important; border-radius: 16px !important; cursor: pointer !important; text-transform: uppercase !important; min-width: 400px !important;">Let's Play!</button>
+                    <button class="srt-btn srt-btn-primary srt-lets-play-btn" id="srtLetsPlayBtn" style="display: none; margin-top: 30px; padding: 18px 60px; font-size: 24px; font-weight: 700; background: #C59D3A; color: #0B0B0B; border: 2px solid #D4A942; border-radius: 12px; box-shadow: 0 4px 20px rgba(197, 157, 58, 0.4); cursor: pointer; transition: all 0.3s ease; min-width: 280px;">Commencer</button>
                 </div>
             </div>
         `;

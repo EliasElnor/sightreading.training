@@ -356,8 +356,8 @@ class PianoMode_SightReading_Game {
                     <div class="srt-loader-tips" id="srtLoadingTips" style="color: #D4A942; font-size: 20px !important; font-weight: 500; text-align: center; margin: 30px 0; min-height: 60px; line-height: 1.6;">
                         <p style="margin: 0; padding: 0 20px;">💡 Tip: Connect a MIDI keyboard for the best experience</p>
                     </div>
-                    <button class="srt-btn srt-btn-primary srt-lets-play-btn" id="srtLetsPlayBtn" style="display: none; margin-top: 40px; padding: 24px 80px !important; font-size: 36px !important; font-weight: 900 !important; background: linear-gradient(135deg, #C59D3A 0%, #D4A942 100%) !important; color: #0B0B0B !important; border: 4px solid #D4A942 !important; border-radius: 16px !important; box-shadow: 0 10px 40px rgba(197, 157, 58, 0.8), 0 0 60px rgba(197, 157, 58, 0.5) !important; cursor: pointer !important; text-transform: uppercase !important; letter-spacing: 3px !important; position: relative !important; z-index: 1000 !important; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important; min-width: 400px !important;">
-                        Let's Play!
+                    <button class="srt-btn srt-btn-primary srt-lets-play-btn" id="srtLetsPlayBtn" style="display: none; margin-top: 30px; padding: 18px 60px; font-size: 24px; font-weight: 700; background: #C59D3A; color: #0B0B0B; border: 2px solid #D4A942; border-radius: 12px; box-shadow: 0 4px 20px rgba(197, 157, 58, 0.4); cursor: pointer; transition: all 0.3s ease; min-width: 280px;">
+                        Commencer
                     </button>
                 </div>
             </div>
@@ -505,8 +505,8 @@ class PianoMode_SightReading_Game {
             <!-- Main Game Area (hidden by default until app starts) -->
             <div class="srt-main-area" id="srtMainArea" style="display: none;">
 
-                <!-- Settings Panel (Left) -->
-                <div class="srt-panel srt-panel-left srt-settings-panel" id="srtSettingsPanel" aria-hidden="true">
+                <!-- Settings Panel (Left - HIDDEN BY DEFAULT) -->
+                <div class="srt-panel srt-panel-left srt-settings-panel" id="srtSettingsPanel" style="display: none; transform: translateX(-100%);" aria-hidden="true">
                     <div class="srt-panel-header">
                         <h3>Settings</h3>
                         <button class="srt-panel-close" id="srtSettingsPanelClose">×</button>
@@ -628,7 +628,8 @@ class PianoMode_SightReading_Game {
                 </div>
 
                 <!-- Statistics Panel (Right) -->
-                <div class="srt-panel srt-panel-right srt-statistics-panel" id="srtStatsPanel" aria-hidden="true">
+                <!-- Stats Panel (Right - HIDDEN BY DEFAULT) -->
+                <div class="srt-panel srt-panel-right srt-statistics-panel" id="srtStatsPanel" style="display: none; transform: translateX(100%);" aria-hidden="true">
                     <div class="srt-panel-header">
                         <h3>Statistics</h3>
                         <button class="srt-panel-close" id="srtStatsPanelClose">×</button>
