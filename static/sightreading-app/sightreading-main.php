@@ -28,7 +28,7 @@ if (!defined('ABSPATH')) {
 
 class PianoMode_SightReading_Game {
 
-    private $version = '2.4.0';
+    private $version = '2.5.0';
     private $assets_loaded = false;
 
     // PianoMode color palette EXACTE
@@ -343,20 +343,20 @@ class PianoMode_SightReading_Game {
         <div id="sightReadingGame" class="srt-container" data-config='<?php echo json_encode($atts); ?>'>
 
             <!-- Loading Screen with Progress Bar and Let's Play Button -->
-            <div class="srt-loading-screen" id="srtLoadingScreen">
-                <div class="srt-loader">
-                    <div class="srt-loader-logo">
-                        <img src="https://pianomode.com/wp-content/uploads/2025/11/cropped-ChatGPT-Image-Nov-10-2025-01_18_37-AM.png" alt="PianoMode" class="srt-logo-img">
+            <div class="srt-loading-screen" id="srtLoadingScreen" style="position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100vw !important; height: 100vh !important; background: linear-gradient(135deg, #0B0B0B 0%, #1A1A1A 100%) !important; display: flex !important; align-items: center !important; justify-content: center !important; z-index: 999999 !important; visibility: visible !important; opacity: 1 !important;">
+                <div class="srt-loader" style="text-align: center; max-width: 700px; padding: 40px; background: rgba(11, 11, 11, 0.95); border-radius: 20px; box-shadow: 0 10px 50px rgba(0,0,0,0.8);">
+                    <div class="srt-loader-logo" style="margin: 0 auto 30px; text-align: center;">
+                        <img src="https://pianomode.com/wp-content/uploads/2025/11/cropped-ChatGPT-Image-Nov-10-2025-01_18_37-AM.png" alt="PianoMode" class="srt-logo-img" style="max-width: 200px; height: auto;">
                     </div>
-                    <div class="srt-loader-text">Loading PianoMode Sight Reading...</div>
-                    <div class="srt-loader-progress">
-                        <div class="srt-loader-bar" id="srtLoadingBar"></div>
+                    <div class="srt-loader-text" style="color: #FFFFFF; font-size: 24px; font-weight: 500; letter-spacing: 0.5px; margin-bottom: 30px;">Loading PianoMode Sight Reading...</div>
+                    <div class="srt-loader-progress" style="width: 500px; height: 16px; background: #333; border-radius: 10px; overflow: hidden; margin: 30px auto; border: 2px solid #444;">
+                        <div class="srt-loader-bar" id="srtLoadingBar" style="height: 100%; background: linear-gradient(90deg, #B08A2E, #C59D3A, #D4A942); width: 0%; transition: width 0.5s ease-out; border-radius: 10px; box-shadow: 0 0 20px rgba(197, 157, 58, 0.6);"></div>
                     </div>
-                    <div class="srt-loader-percentage" id="srtLoadingPercentage">0%</div>
-                    <div class="srt-loader-tips" id="srtLoadingTips">
-                        <p>💡 Tip: Connect a MIDI keyboard for the best experience</p>
+                    <div class="srt-loader-percentage" id="srtLoadingPercentage" style="color: #C59D3A; font-size: 56px !important; font-weight: 900 !important; text-align: center; margin: 30px 0; text-shadow: 0 3px 15px rgba(197, 157, 58, 0.8), 0 0 30px rgba(197, 157, 58, 0.5); letter-spacing: 2px;">0%</div>
+                    <div class="srt-loader-tips" id="srtLoadingTips" style="color: #D4A942; font-size: 20px !important; font-weight: 500; text-align: center; margin: 30px 0; min-height: 60px; line-height: 1.6;">
+                        <p style="margin: 0; padding: 0 20px;">💡 Tip: Connect a MIDI keyboard for the best experience</p>
                     </div>
-                    <button class="srt-btn srt-btn-primary srt-lets-play-btn" id="srtLetsPlayBtn" style="display: none;">
+                    <button class="srt-btn srt-btn-primary srt-lets-play-btn" id="srtLetsPlayBtn" style="display: none; margin-top: 40px; padding: 24px 80px !important; font-size: 36px !important; font-weight: 900 !important; background: linear-gradient(135deg, #C59D3A 0%, #D4A942 100%) !important; color: #0B0B0B !important; border: 4px solid #D4A942 !important; border-radius: 16px !important; box-shadow: 0 10px 40px rgba(197, 157, 58, 0.8), 0 0 60px rgba(197, 157, 58, 0.5) !important; cursor: pointer !important; text-transform: uppercase !important; letter-spacing: 3px !important; position: relative !important; z-index: 1000 !important; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important; min-width: 400px !important;">
                         Let's Play!
                     </button>
                 </div>

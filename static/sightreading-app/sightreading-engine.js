@@ -1524,10 +1524,56 @@
     // Initialize when document is ready
     $(document).ready(function() {
         console.log('🎹 Document ready - Starting Sight Reading Training...');
-        
+
+        // DEBUG: Check if loading screen exists in DOM
+        const loadingScreen = document.getElementById('srtLoadingScreen');
+        const container = document.getElementById('sightReadingGame');
+
+        console.log('🔍 DEBUG - Container Element:', container);
+        console.log('🔍 DEBUG - Loading Screen Element:', loadingScreen);
+
+        if (!container) {
+            console.error('❌❌❌ CRITICAL: Container #sightReadingGame NOT FOUND!');
+            console.error('❌ The shortcode [sightreading_game] is NOT rendering any HTML!');
+            console.error('❌ SOLUTION: Add the shortcode [sightreading_game] to your WordPress page!');
+            alert('ERREUR CRITIQUE: Le shortcode [sightreading_game] n\'est PAS sur la page WordPress!\n\nAjoutez le shortcode à votre page!');
+            return;
+        }
+
+        if (!loadingScreen) {
+            console.error('❌❌❌ CRITICAL: Loading screen #srtLoadingScreen NOT FOUND!');
+            console.error('❌ The HTML structure is incomplete!');
+            alert('ERREUR CRITIQUE: Structure HTML incomplète!');
+            return;
+        }
+
+        // Check computed styles of loading screen
+        const styles = window.getComputedStyle(loadingScreen);
+        console.log('🔍 Loading Screen Styles:');
+        console.log('  - display:', styles.display);
+        console.log('  - visibility:', styles.visibility);
+        console.log('  - opacity:', styles.opacity);
+        console.log('  - z-index:', styles.zIndex);
+        console.log('  - position:', styles.position);
+        console.log('  - top:', styles.top);
+        console.log('  - left:', styles.left);
+        console.log('  - right:', styles.right);
+        console.log('  - bottom:', styles.bottom);
+        console.log('  - background:', styles.background);
+
+        // Force loading screen to be visible
+        if (styles.display === 'none' || styles.visibility === 'hidden' || styles.opacity === '0') {
+            console.warn('⚠️ Loading screen était caché! Forcing visibility...');
+            loadingScreen.style.display = 'flex !important';
+            loadingScreen.style.visibility = 'visible !important';
+            loadingScreen.style.opacity = '1 !important';
+        }
+
+        console.log('✅ Loading screen should now be visible on the page!');
+
         // Create global engine instance
         window.srtEngine = new SightReadingEngine();
-        
+
         // Initialize engine
         window.srtEngine.initialize();
     });
