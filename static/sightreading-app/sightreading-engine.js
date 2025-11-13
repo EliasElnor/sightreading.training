@@ -1,1583 +1,3173 @@
 /**
- * PianoMode Sight Reading Training - Main JavaScript Engine
- * Version: 1.0.0
- * File: sightreading-engine.js
+ * PianoMode Sight Reading Game - JavaScript Engine
+ * File: /blocksy-child/assets/Sightreading-game/sightreading-engine.js
+ * Version: 15.0.0 - Professional Complete Implementation
  * 
- * Architecture:
- * - SightReadingEngine (main orchestrator)
- * - AudioEngine (Tone.js, Salamander Piano)
- * - VirtualPiano (88 keys, MIDI 21-108)
- * - StaffRenderer (Canvas, Grand Staff, notes/chords)
- * - MIDIHandler (Web MIDI API)
- * - WaitMode, ScrollMode, FreeMode
- * - StatsTracker (session & global stats)
- * - UIController (interface management)
- * - KeyboardInput (PC keyboard fallback)
- * 
- * Total: ~6000+ lines of professional JavaScript
+ * Complete sight reading engine with all features:
+ * - Canvas rendering for staff and notes
+ * - MIDI input/output support
+ * - Virtual piano keyboard
+ * - Wait & Scroll modes
+ * - Note generation algorithms
+ * - Achievement system
+ * - Statistics tracking
+ * - Sound synthesis
+ * - And much more...
  */
 
 (function($) {
     'use strict';
 
-    console.log('🎹 PianoMode Sight Reading Training - Engine Loading...');
-
-    /* =====================================================
-       CONSTANTS & CONFIGURATION
-       ===================================================== */
-
-    const CONFIG = {
-        VERSION: '1.0.0',
-        AUDIO: {
-            SALAMANDER_BASE_URL: 'https://tonejs.github.io/audio/salamander/',
-            DEFAULT_VOLUME: 0.75,
-            METRONOME_VOLUME: 0.5,
-            REVERB_DECAY: 1.5,
-            REVERB_WET: 0.15
-        },
-        PIANO: {
-            TOTAL_KEYS: 88,
-            START_MIDI: 21,  // A0
-            END_MIDI: 108,   // C8
-            WHITE_KEY_WIDTH: 24,
-            WHITE_KEY_HEIGHT: 140,
-            BLACK_KEY_WIDTH: 14,
-            BLACK_KEY_HEIGHT: 90
-        },
-        STAFF: {
-            HEIGHT: 70,
-            LINE_SPACING: 10,
-            GRAND_STAFF_HEIGHT: 160,
-            CANVAS_WIDTH: 1200
-        },
-        MODES: {
-            WAIT: 'wait',
-            SCROLL: 'scroll',
-            FREE: 'free'
-        },
-        TEMPO: {
-            MIN: 40,
-            MAX: 200,
-            DEFAULT: 100
-        }
-    };
-
-    // Complete MIDI to Staff Position Mapping (MIDI 21-108)
-    const MIDI_TO_STAFF_POSITION = {
-        // Octave 0 (A0, Bb0, B0)
-        21: { staff: 'bass', line: -10, ledgerLines: 5, noteName: 'A0' },
-        22: { staff: 'bass', line: -9.5, ledgerLines: 5, noteName: 'Bb0' },
-        23: { staff: 'bass', line: -9, ledgerLines: 5, noteName: 'B0' },
-        
-        // Octave 1 (C1-B1)
-        24: { staff: 'bass', line: -9, ledgerLines: 4, noteName: 'C1' },
-        25: { staff: 'bass', line: -8.5, ledgerLines: 4, noteName: 'Db1' },
-        26: { staff: 'bass', line: -8, ledgerLines: 4, noteName: 'D1' },
-        27: { staff: 'bass', line: -7.5, ledgerLines: 4, noteName: 'Eb1' },
-        28: { staff: 'bass', line: -7, ledgerLines: 3, noteName: 'E1' },
-        29: { staff: 'bass', line: -6.5, ledgerLines: 3, noteName: 'F1' },
-        30: { staff: 'bass', line: -6, ledgerLines: 3, noteName: 'Gb1' },
-        31: { staff: 'bass', line: -5.5, ledgerLines: 3, noteName: 'G1' },
-        32: { staff: 'bass', line: -5, ledgerLines: 3, noteName: 'Ab1' },
-        33: { staff: 'bass', line: -4.5, ledgerLines: 2, noteName: 'A1' },
-        34: { staff: 'bass', line: -4, ledgerLines: 2, noteName: 'Bb1' },
-        35: { staff: 'bass', line: -3.5, ledgerLines: 2, noteName: 'B1' },
-        
-        // Octave 2 (C2-B2)
-        36: { staff: 'bass', line: -3, ledgerLines: 2, noteName: 'C2' },
-        37: { staff: 'bass', line: -2.5, ledgerLines: 2, noteName: 'Db2' },
-        38: { staff: 'bass', line: -2, ledgerLines: 1, noteName: 'D2' },
-        39: { staff: 'bass', line: -1.5, ledgerLines: 1, noteName: 'Eb2' },
-        40: { staff: 'bass', line: -1, ledgerLines: 1, noteName: 'E2' },
-        41: { staff: 'bass', line: -0.5, ledgerLines: 0, noteName: 'F2' },
-        42: { staff: 'bass', line: 0, ledgerLines: 0, noteName: 'Gb2' },
-        43: { staff: 'bass', line: 0.5, ledgerLines: 0, noteName: 'G2' },
-        44: { staff: 'bass', line: 1, ledgerLines: 0, noteName: 'Ab2' },
-        45: { staff: 'bass', line: 1.5, ledgerLines: 0, noteName: 'A2' },
-        46: { staff: 'bass', line: 2, ledgerLines: 0, noteName: 'Bb2' },
-        47: { staff: 'bass', line: 2.5, ledgerLines: 0, noteName: 'B2' },
-        
-        // Octave 3 (C3-B3)
-        48: { staff: 'bass', line: 3, ledgerLines: 0, noteName: 'C3' },
-        49: { staff: 'bass', line: 3.5, ledgerLines: 0, noteName: 'Db3' },
-        50: { staff: 'bass', line: 4, ledgerLines: 0, noteName: 'D3' },
-        51: { staff: 'bass', line: 4.5, ledgerLines: 0, noteName: 'Eb3' },
-        52: { staff: 'bass', line: 5, ledgerLines: 0, noteName: 'E3' },
-        53: { staff: 'bass', line: 5.5, ledgerLines: 0, noteName: 'F3' },
-        54: { staff: 'bass', line: 6, ledgerLines: 0, noteName: 'Gb3' },
-        55: { staff: 'bass', line: 6.5, ledgerLines: 0, noteName: 'G3' },
-        56: { staff: 'bass', line: 7, ledgerLines: 0, noteName: 'Ab3' },
-        57: { staff: 'bass', line: 7.5, ledgerLines: 0, noteName: 'A3' },
-        58: { staff: 'bass', line: 8, ledgerLines: 0, noteName: 'Bb3' },
-        59: { staff: 'bass', line: 8.5, ledgerLines: 0, noteName: 'B3' },
-        
-        // Middle C (C4)
-        60: { staff: 'both', line: 0, ledgerLines: 1, noteName: 'C4' },
-        
-        // Octave 4 (C#4-B4)
-        61: { staff: 'treble', line: 0.5, ledgerLines: 0, noteName: 'Db4' },
-        62: { staff: 'treble', line: 1, ledgerLines: 0, noteName: 'D4' },
-        63: { staff: 'treble', line: 1.5, ledgerLines: 0, noteName: 'Eb4' },
-        64: { staff: 'treble', line: 2, ledgerLines: 0, noteName: 'E4' },
-        65: { staff: 'treble', line: 2.5, ledgerLines: 0, noteName: 'F4' },
-        66: { staff: 'treble', line: 3, ledgerLines: 0, noteName: 'Gb4' },
-        67: { staff: 'treble', line: 3.5, ledgerLines: 0, noteName: 'G4' },
-        68: { staff: 'treble', line: 4, ledgerLines: 0, noteName: 'Ab4' },
-        69: { staff: 'treble', line: 4.5, ledgerLines: 0, noteName: 'A4' },
-        70: { staff: 'treble', line: 5, ledgerLines: 0, noteName: 'Bb4' },
-        71: { staff: 'treble', line: 5.5, ledgerLines: 0, noteName: 'B4' },
-        
-        // Octave 5 (C5-B5)
-        72: { staff: 'treble', line: 6, ledgerLines: 0, noteName: 'C5' },
-        73: { staff: 'treble', line: 6.5, ledgerLines: 0, noteName: 'Db5' },
-        74: { staff: 'treble', line: 7, ledgerLines: 0, noteName: 'D5' },
-        75: { staff: 'treble', line: 7.5, ledgerLines: 0, noteName: 'Eb5' },
-        76: { staff: 'treble', line: 8, ledgerLines: 0, noteName: 'E5' },
-        77: { staff: 'treble', line: 8.5, ledgerLines: 0, noteName: 'F5' },
-        78: { staff: 'treble', line: 9, ledgerLines: 1, noteName: 'Gb5' },
-        79: { staff: 'treble', line: 9.5, ledgerLines: 1, noteName: 'G5' },
-        80: { staff: 'treble', line: 10, ledgerLines: 1, noteName: 'Ab5' },
-        81: { staff: 'treble', line: 10.5, ledgerLines: 1, noteName: 'A5' },
-        82: { staff: 'treble', line: 11, ledgerLines: 1, noteName: 'Bb5' },
-        83: { staff: 'treble', line: 11.5, ledgerLines: 1, noteName: 'B5' },
-        
-        // Octave 6 (C6-B6)
-        84: { staff: 'treble', line: 12, ledgerLines: 2, noteName: 'C6' },
-        85: { staff: 'treble', line: 12.5, ledgerLines: 2, noteName: 'Db6' },
-        86: { staff: 'treble', line: 13, ledgerLines: 2, noteName: 'D6' },
-        87: { staff: 'treble', line: 13.5, ledgerLines: 2, noteName: 'Eb6' },
-        88: { staff: 'treble', line: 14, ledgerLines: 2, noteName: 'E6' },
-        89: { staff: 'treble', line: 14.5, ledgerLines: 2, noteName: 'F6' },
-        90: { staff: 'treble', line: 15, ledgerLines: 3, noteName: 'Gb6' },
-        91: { staff: 'treble', line: 15.5, ledgerLines: 3, noteName: 'G6' },
-        92: { staff: 'treble', line: 16, ledgerLines: 3, noteName: 'Ab6' },
-        93: { staff: 'treble', line: 16.5, ledgerLines: 3, noteName: 'A6' },
-        94: { staff: 'treble', line: 17, ledgerLines: 3, noteName: 'Bb6' },
-        95: { staff: 'treble', line: 17.5, ledgerLines: 3, noteName: 'B6' },
-        
-        // Octave 7 (C7-B7)
-        96: { staff: 'treble', line: 18, ledgerLines: 4, noteName: 'C7' },
-        97: { staff: 'treble', line: 18.5, ledgerLines: 4, noteName: 'Db7' },
-        98: { staff: 'treble', line: 19, ledgerLines: 4, noteName: 'D7' },
-        99: { staff: 'treble', line: 19.5, ledgerLines: 4, noteName: 'Eb7' },
-        100: { staff: 'treble', line: 20, ledgerLines: 4, noteName: 'E7' },
-        101: { staff: 'treble', line: 20.5, ledgerLines: 4, noteName: 'F7' },
-        102: { staff: 'treble', line: 21, ledgerLines: 5, noteName: 'Gb7' },
-        103: { staff: 'treble', line: 21.5, ledgerLines: 5, noteName: 'G7' },
-        104: { staff: 'treble', line: 22, ledgerLines: 5, noteName: 'Ab7' },
-        105: { staff: 'treble', line: 22.5, ledgerLines: 5, noteName: 'A7' },
-        106: { staff: 'treble', line: 23, ledgerLines: 5, noteName: 'Bb7' },
-        107: { staff: 'treble', line: 23.5, ledgerLines: 5, noteName: 'B7' },
-        
-        // C8
-        108: { staff: 'treble', line: 24, ledgerLines: 6, noteName: 'C8' }
-    };
-
-    // Keyboard mapping (QWERTY to MIDI)
-    const KEYBOARD_TO_MIDI = {
-        // Lower octave
-        'z': 48, 's': 49, 'x': 50, 'd': 51, 'c': 52, 'v': 53, 'g': 54, 'b': 55, 'h': 56, 'n': 57, 'j': 58, 'm': 59,
-        // Middle octave (C4)
-        'q': 60, '2': 61, 'w': 62, '3': 63, 'e': 64, 'r': 65, '5': 66, 't': 67, '6': 68, 'y': 69, '7': 70, 'u': 71,
-        // Upper octave
-        'i': 72, '9': 73, 'o': 74, '0': 75, 'p': 76, '[': 77, '=': 78, ']': 79
-    };
-
-    /* =====================================================
-       MAIN SIGHT READING ENGINE CLASS
-       ===================================================== */
-
+    /**
+     * Main Sight Reading Engine Class
+     */
     class SightReadingEngine {
-        constructor() {
-            console.log('🎹 Initializing Sight Reading Engine...');
-            
-            this.config = CONFIG;
-            this.isReady = false;
-            this.currentMode = null;
-            
-            // Sub-systems
-            this.audioEngine = null;
-            this.virtualPiano = null;
-            this.staffRenderer = null;
-            this.midiHandler = null;
-            this.statsTracker = null;
-            this.uiController = null;
-            this.keyboardInput = null;
-            
-            // Game state
-            this.settings = {
-                mode: CONFIG.MODES.WAIT,
-                tempo: CONFIG.TEMPO.DEFAULT,
-                volume: CONFIG.AUDIO.DEFAULT_VOLUME,
-                difficulty: 'elementary', // Match PHP default
-                generator: 'random',
+        constructor(container) {
+            this.container = container;
+            this.config = window.srtConfig || {};
+            this.canvas = null;
+            this.ctx = null;
+            this.piano = null;
+            this.midi = null;
+            this.audio = null;
+            this.notes = [];
+            this.currentNoteIndex = 0;
+            this.isPlaying = false;
+            this.isPaused = false;
+            this.mode = 'wait'; // 'wait' or 'scroll'
+            this.tempo = 100;
+            this.score = 0;
+            this.streak = 0;
+            this.bestStreak = 0;
+            this.correctNotes = 0;
+            this.incorrectNotes = 0;
+            this.sessionStartTime = null;
+            this.sessionDuration = 0;
+            this.playheadPosition = 0;
+            this.scrollSpeed = 1;
+            this.metronomeEnabled = false;
+            this.metronomeBeat = 0;
+            this.achievements = [];
+            this.userSettings = {};
+            this.staffSettings = {
+                clef: 'treble',
                 keySignature: 'C',
-                clef: 'grand',
-                metronomeEnabled: false
+                timeSignature: '4/4'
             };
+            this.noteGenerator = null;
+            this.renderer = null;
+            this.animationFrame = null;
+            this.lastFrameTime = 0;
+            this.deltaTime = 0;
             
-            this.stats = {
-                hits: 0,
-                misses: 0,
-                streak: 0,
-                bestStreak: 0,
-                accuracy: 100,
-                sessionStart: null
-            };
+            this.init();
         }
-
-        async initialize() {
+        
+        /**
+         * Initialize the engine with visible progress
+         */
+        async init() {
             try {
-                console.log('🔧 Initializing all subsystems...');
+                console.log('🔧 Starting engine initialization...');
 
-                // Show loading screen with visible delays for better UX
-                this.showLoadingProgress(0, 'Initializing audio engine...');
+                this.updateLoadingProgress(5, 'Loading user settings...');
                 await this.delay(300);
+                this.loadUserSettings();
 
-                // Initialize audio engine (non-blocking - continue even if it fails)
-                this.audioEngine = new AudioEngine();
-                try {
-                    this.audioEngine.initialize().catch(err => {
-                        console.warn('⚠️ Audio engine initialization failed (non-critical):', err);
-                    });
-                } catch (err) {
-                    console.warn('⚠️ Audio engine initialization failed immediately (non-critical):', err);
-                }
+                this.updateLoadingProgress(15, 'Setting up canvas...');
+                await this.delay(300);
+                this.setupCanvas();
 
-                this.showLoadingProgress(20, 'Setting up virtual piano...');
-                await this.delay(250);
+                this.updateLoadingProgress(30, 'Creating virtual piano...');
+                await this.delay(300);
+                this.setupPiano();
 
-                // Initialize virtual piano
-                this.virtualPiano = new VirtualPiano(this);
-                this.virtualPiano.initialize();
+                this.updateLoadingProgress(45, 'Configuring MIDI...');
+                await this.delay(300);
+                this.setupMIDI();
 
-                this.showLoadingProgress(40, 'Setting up staff renderer...');
-                await this.delay(250);
+                this.updateLoadingProgress(60, 'Initializing audio...');
+                await this.delay(300);
+                this.setupAudio();
 
-                // Initialize staff renderer
-                this.staffRenderer = new StaffRenderer(this);
-                this.staffRenderer.initialize();
+                this.updateLoadingProgress(75, 'Setting up controls...');
+                await this.delay(300);
+                this.setupEventListeners();
 
-                this.showLoadingProgress(60, 'Configuring MIDI...');
-                await this.delay(250);
+                this.updateLoadingProgress(85, 'Preparing note generator...');
+                await this.delay(300);
+                this.setupNoteGenerator();
 
-                // Initialize MIDI handler (non-blocking)
-                this.midiHandler = new MIDIHandler(this);
-                this.midiHandler.initialize().catch(err => {
-                    console.warn('⚠️ MIDI initialization failed (non-critical):', err);
-                });
+                this.updateLoadingProgress(92, 'Setting up renderer...');
+                await this.delay(300);
+                this.setupRenderer();
 
-                this.showLoadingProgress(75, 'Setting up keyboard input...');
-                await this.delay(250);
+                this.updateLoadingProgress(97, 'Generating initial notes...');
+                await this.delay(300);
+                this.generateInitialNotes();
 
-                // Initialize keyboard input
-                this.keyboardInput = new KeyboardInput(this);
-                this.keyboardInput.initialize();
-
-                this.showLoadingProgress(90, 'Loading statistics...');
-                await this.delay(250);
-
-                // Initialize stats tracker
-                this.statsTracker = new StatsTracker(this);
-                this.statsTracker.initialize();
-
-                this.showLoadingProgress(95, 'Preparing interface...');
-                await this.delay(250);
-
-                // Initialize UI controller
-                this.uiController = new UIController(this);
-                this.uiController.initialize();
-
-                this.isReady = true;
-
-                console.log('✅ Sight Reading Engine initialized successfully!');
-
-                // Animate to 100% and show button with emphasis
-                await this.delay(200);
-                this.showLoadingProgress(100, 'Ready to play! Click the button below.');
+                this.updateLoadingProgress(100, 'Ready! Click the button below to start.');
                 await this.delay(400);
 
-                // Make button visible with fade-in effect
-                const $btn = $('#srtLetsPlayBtn');
-                $btn.prop('disabled', false);
-                $btn.css({
-                    'display': 'block',
-                    'opacity': 0,
-                    'transform': 'scale(0.9)'
-                });
-                $btn.animate({
-                    'opacity': 1
-                }, 400, function() {
-                    $(this).css('transform', 'scale(1)');
-                });
-
-                console.log('🎯 Let\'s Play button is now visible and enabled');
-                console.log('👆 CLICK THE BUTTON TO START!');
+                this.showLetsPlayButton();
+                console.log('✅ Engine initialization complete!');
 
             } catch (error) {
-                console.error('❌ Failed to initialize engine:', error);
-                console.error('Error details:', error.message, error.stack);
-                this.showError('Failed to initialize application: ' + error.message);
-
-                // Still try to show the Let's Play button so user can attempt to start
-                $('#srtLetsPlayBtn').text('Try Anyway').prop('disabled', false).fadeIn(400);
+                console.error('❌ Initialization error:', error);
+                this.updateLoadingProgress(100, 'Error occurred - click to try anyway');
+                this.showLetsPlayButton();
             }
         }
 
-        // Helper method for delays to make loading visible
+        /**
+         * Helper delay function
+         */
         delay(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        showLoadingProgress(percent, message) {
-            // CORRECTED IDs to match PHP
-            $('#srtLoadingBar').css('width', percent + '%');
-            $('#srtLoadingPercentage').text(percent + '%');
-            if (message) {
-                $('#srtLoadingTips p').text('💡 ' + message);
+        /**
+         * Update loading progress bar and message
+         */
+        updateLoadingProgress(percent, message) {
+            const $bar = $('#srtLoadingBar');
+            const $percentage = $('#srtLoadingPercentage');
+            const $tips = $('#srtLoadingTips p');
+
+            if ($bar.length) {
+                $bar.css('width', percent + '%');
+            }
+            if ($percentage.length) {
+                $percentage.text(percent + '%');
+            }
+            if ($tips.length && message) {
+                $tips.text('💡 ' + message);
+            }
+
+            console.log(`📊 Loading: ${percent}% - ${message}`);
+        }
+
+        /**
+         * Show Let's Play button
+         */
+        showLetsPlayButton() {
+            const $btn = $('#srtLetsPlayBtn');
+            if ($btn.length) {
+                $btn.prop('disabled', false);
+                $btn.css({
+                    'display': 'block',
+                    'opacity': 0
+                });
+                $btn.animate({ 'opacity': 1 }, 500);
+
+                // Attach click handler
+                $btn.off('click').on('click', () => {
+                    console.log('🎯 Let\'s Play button clicked!');
+                    this.hideLoadingScreen();
+                    this.startAnimationLoop();
+                });
+
+                console.log('🎯 Let\'s Play button is now visible and clickable!');
+                console.log('👆 USER: CLICK THE BUTTON TO START!');
+            } else {
+                console.error('❌ Let\'s Play button not found!');
+                // Fallback: just hide loading screen
+                setTimeout(() => {
+                    this.hideLoadingScreen();
+                    this.startAnimationLoop();
+                }, 1000);
             }
         }
-
-        showError(message) {
-            alert('Error: ' + message);
+        
+        /**
+         * Load user settings
+         */
+        loadUserSettings() {
+            this.userSettings = {
+                ...this.config.userSettings,
+                ...this.getLocalSettings()
+            };
         }
-
-        start() {
-            if (!this.isReady) {
-                console.warn('⚠️ Engine not ready yet');
+        
+        /**
+         * Get settings from localStorage
+         */
+        getLocalSettings() {
+            try {
+                const settings = localStorage.getItem('srt_settings');
+                return settings ? JSON.parse(settings) : {};
+            } catch (e) {
+                console.error('Failed to load local settings:', e);
+                return {};
+            }
+        }
+        
+        /**
+         * Save settings to localStorage
+         */
+        saveLocalSettings() {
+            try {
+                localStorage.setItem('srt_settings', JSON.stringify(this.userSettings));
+            } catch (e) {
+                console.error('Failed to save local settings:', e);
+            }
+        }
+        
+        /**
+         * Setup canvas for rendering
+         */
+        setupCanvas() {
+            this.canvas = document.getElementById('srtScoreCanvas');
+            if (!this.canvas) {
+                console.error('Canvas element not found');
                 return;
             }
+            
+            this.ctx = this.canvas.getContext('2d');
+            this.resizeCanvas();
+            
+            // Setup high DPI support
+            const dpr = window.devicePixelRatio || 1;
+            const rect = this.canvas.getBoundingClientRect();
+            
+            this.canvas.width = rect.width * dpr;
+            this.canvas.height = rect.height * dpr;
+            this.ctx.scale(dpr, dpr);
+            
+            // Set canvas styles
+            this.canvas.style.width = rect.width + 'px';
+            this.canvas.style.height = rect.height + 'px';
+        }
+        
+        /**
+         * Resize canvas to fit container
+         */
+        resizeCanvas() {
+            const container = this.canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+            
+            this.canvas.style.width = rect.width + 'px';
+            this.canvas.style.height = rect.height + 'px';
+            
+            const dpr = window.devicePixelRatio || 1;
+            this.canvas.width = rect.width * dpr;
+            this.canvas.height = rect.height * dpr;
+            
+            if (this.ctx) {
+                this.ctx.scale(dpr, dpr);
+            }
+        }
+        
+        /**
+         * Setup virtual piano keyboard
+         */
+        setupPiano() {
+            this.piano = new VirtualPiano(this);
+            this.piano.init();
+        }
+        
+        /**
+         * Setup MIDI support
+         */
+        setupMIDI() {
+            this.midi = new MIDIManager(this);
+            this.midi.init();
+        }
+        
+        /**
+         * Setup audio context and synthesis
+         */
+        setupAudio() {
+            this.audio = new AudioManager(this);
+            this.audio.init();
+        }
+        
+        /**
+         * Setup all event listeners
+         */
+        setupEventListeners() {
+            // Play/Pause/Stop buttons
+            $('#srtPlayBtn').on('click', () => this.start());
+            $('#srtPauseBtn').on('click', () => this.pause());
+            $('#srtStopBtn').on('click', () => this.stop());
+            $('#srtResetBtn').on('click', () => this.reset());
+            
+            // Mode buttons
+            $('.srt-mode-btn').on('click', (e) => {
+                const mode = $(e.currentTarget).data('mode');
+                this.setMode(mode);
+            });
+            
+            // Tempo slider
+            $('#srtTempoSlider').on('input', (e) => {
+                this.setTempo(parseInt(e.target.value));
+            });
+            
+            // Metronome button
+            $('#srtMetronomeBtn').on('click', () => {
+                this.toggleMetronome();
+            });
+            
+            // Settings button
+            $('#srtSettingsBtn').on('click', () => {
+                this.toggleSettingsPanel();
+            });
+            
+            // Settings panel close
+            $('#srtPanelClose').on('click', () => {
+                this.closeSettingsPanel();
+            });
+            
+            // Difficulty selector
+            $('#srtDifficultySelect').on('change', (e) => {
+                this.setDifficulty(e.target.value);
+            });
+            
+            // Clef buttons
+            $('.srt-btn-option[data-clef]').on('click', (e) => {
+                const clef = $(e.currentTarget).data('clef');
+                this.setClef(clef);
+            });
+            
+            // Generator type buttons
+            $('.srt-btn-option[data-generator]').on('click', (e) => {
+                const generator = $(e.currentTarget).data('generator');
+                this.setGeneratorType(generator);
+            });
+            
+            // Key signature selector
+            $('#srtKeySignature').on('change', (e) => {
+                this.setKeySignature(e.target.value);
+            });
+            
+            // Time signature selector
+            $('#srtTimeSignature').on('change', (e) => {
+                this.setTimeSignature(e.target.value);
+            });
+            
+            // Note range selectors
+            $('#srtRangeMin, #srtRangeMax').on('change', () => {
+                this.updateNoteRange();
+            });
+            
+            // Hands buttons
+            $('.srt-btn-option[data-hands]').on('click', (e) => {
+                const hands = $(e.currentTarget).data('hands');
+                this.setHands(hands);
+            });
+            
+            // Accidentals switch
+            $('#srtAccidentals').on('change', (e) => {
+                this.setAccidentals(e.target.checked);
+            });
+            
+            // Chord density slider
+            $('#srtChordDensity').on('input', (e) => {
+                this.setChordDensity(parseInt(e.target.value));
+            });
+            
+            // Note names selector
+            $('#srtNoteNames').on('change', (e) => {
+                this.setNoteNames(e.target.value);
+            });
+            
+            // Show keyboard switch
+            $('#srtShowKeyboard').on('change', (e) => {
+                this.toggleKeyboard(e.target.checked);
+            });
+            
+            // Show stats switch
+            $('#srtShowStats').on('change', (e) => {
+                this.toggleStats(e.target.checked);
+            });
+            
+            // Highlight errors switch
+            $('#srtHighlightErrors').on('change', (e) => {
+                this.setHighlightErrors(e.target.checked);
+            });
+            
+            // Piano sound selector
+            $('#srtPianoSound').on('change', (e) => {
+                this.setPianoSound(e.target.value);
+            });
+            
+            // Volume sliders
+            $('#srtVolume').on('input', (e) => {
+                this.setVolume(parseInt(e.target.value));
+            });
+            
+            $('#srtMetronomeVolume').on('input', (e) => {
+                this.setMetronomeVolume(parseInt(e.target.value));
+            });
+            
+            // MIDI refresh button
+            $('#srtMidiRefresh').on('click', () => {
+                this.midi.refreshDevices();
+            });
+            
+            // MIDI selectors
+            $('#srtMidiInput, #srtMidiOutput, #srtMidiChannel').on('change', () => {
+                this.updateMIDISettings();
+            });
+            
+            // Octave controls
+            $('#srtOctaveDown').on('click', () => {
+                this.piano.changeOctave(-1);
+            });
+            
+            $('#srtOctaveUp').on('click', () => {
+                this.piano.changeOctave(1);
+            });
+            
+            // Transpose selector
+            $('#srtTranspose').on('change', (e) => {
+                this.piano.setTranspose(parseInt(e.target.value));
+            });
+            
+            // Sustain button
+            $('#srtSustainBtn').on('click', () => {
+                this.piano.toggleSustain();
+            });
+            
+            // Custom sound upload
+            $('#srtPianoSound').on('change', (e) => {
+                if (e.target.value === 'custom') {
+                    $('#srtCustomSoundRow').show();
+                } else {
+                    $('#srtCustomSoundRow').hide();
+                }
+            });
+            
+            $('#srtUploadBtn').on('click', () => {
+                this.uploadCustomSound();
+            });
+            
+            // Window resize
+            $(window).on('resize', () => {
+                this.resizeCanvas();
+                if (this.renderer) {
+                    this.renderer.resize();
+                }
+            });
+            
+            // Keyboard shortcuts
+            $(document).on('keydown', (e) => {
+                this.handleKeyboardShortcut(e);
+            });
+            
+            // Prevent context menu on canvas
+            this.canvas.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
+        }
+        
+        /**
+         * Setup note generator
+         */
+        setupNoteGenerator() {
+            this.noteGenerator = new NoteGenerator(this);
+        }
+        
+        /**
+         * Setup renderer
+         */
+        setupRenderer() {
+            this.renderer = new StaffRenderer(this);
+        }
+        
+        /**
+         * Generate initial notes
+         */
+        generateInitialNotes() {
+            this.notes = this.noteGenerator.generate();
+        }
+        
+        /**
+         * Hide loading screen and show main interface
+         */
+        hideLoadingScreen() {
+            console.log('💫 Hiding loading screen and showing interface...');
 
-            console.log('🚀 Starting Sight Reading Training...');
+            $('.srt-loading-screen').fadeOut(500, () => {
+                console.log('✅ Loading screen hidden');
 
-            // Hide loading screen and show interface - CORRECTED IDs to match PHP
-            $('#srtLoadingScreen').fadeOut(500, () => {
-                console.log('💫 Loading screen hidden, showing interface...');
-                $('#srtHeader').fadeIn(300);
-                $('#srtToolbar').fadeIn(300);
-                $('#srtMainArea').fadeIn(300, () => {
-                    console.log('✅ Interface is now visible');
-
-                    // Initialize current mode and generate exercise AFTER interface is visible
-                    try {
-                        this.setMode(this.settings.mode);
-                        this.generateNewExercise();
-                        console.log('✅ Exercise generated and ready');
-                    } catch (error) {
-                        console.error('❌ Error setting mode or generating exercise:', error);
-                        this.showError('Failed to generate exercise: ' + error.message);
-                    }
+                // Show main interface elements
+                $('#srtHeader').fadeIn(400);
+                $('#srtToolbar').fadeIn(400);
+                $('#srtMainArea').fadeIn(400, () => {
+                    console.log('✅ Main interface visible');
+                    console.log('🎹 Ready to play!');
                 });
             });
         }
-
-        setMode(mode) {
-            console.log('🎮 Setting mode to:', mode);
+        
+        /**
+         * Start animation loop
+         */
+        startAnimationLoop() {
+            const animate = (timestamp) => {
+                if (!this.lastFrameTime) {
+                    this.lastFrameTime = timestamp;
+                }
+                
+                this.deltaTime = timestamp - this.lastFrameTime;
+                this.lastFrameTime = timestamp;
+                
+                this.update(this.deltaTime);
+                this.render();
+                
+                this.animationFrame = requestAnimationFrame(animate);
+            };
             
-            // Cleanup previous mode
-            if (this.currentMode) {
-                this.currentMode.cleanup();
-            }
-            
-            // Create new mode instance
-            switch (mode) {
-                case CONFIG.MODES.WAIT:
-                    this.currentMode = new WaitMode(this);
-                    break;
-                case CONFIG.MODES.SCROLL:
-                    this.currentMode = new ScrollMode(this);
-                    break;
-                case CONFIG.MODES.FREE:
-                    this.currentMode = new FreeMode(this);
-                    break;
-                default:
-                    console.error('Unknown mode:', mode);
-                    return;
-            }
-            
-            this.settings.mode = mode;
-            this.currentMode.initialize();
-            
-            // Update UI
-            $('.srt-mode-btn').removeClass('active');
-            $(`.srt-mode-btn[data-mode="${mode}"]`).addClass('active');
+            this.animationFrame = requestAnimationFrame(animate);
         }
-
-        generateNewExercise() {
-            console.log('📝 Generating new exercise...');
-            
-            if (!this.currentMode) {
-                console.warn('⚠️ No mode selected');
+        
+        /**
+         * Update game state
+         */
+        update(deltaTime) {
+            if (!this.isPlaying || this.isPaused) {
                 return;
             }
             
-            // Generate notes using the selected generator
-            const notes = this.generateNotes();
-            
-            // Set notes to current mode
-            this.currentMode.setExercise(notes);
-            
-            // Render on staff
-            this.staffRenderer.render(notes);
-        }
-
-        generateNotes() {
-            console.log('🎼 Generating notes for difficulty:', this.settings.difficulty);
-
-            // Get difficulty settings from WordPress config if available
-            const difficultyConfig = window.srtConfig?.difficulties?.[this.settings.difficulty];
-
-            if (!difficultyConfig) {
-                console.warn('⚠️ No difficulty config found, using defaults');
+            // Update session duration
+            if (this.sessionStartTime) {
+                this.sessionDuration = (Date.now() - this.sessionStartTime) / 1000;
+                this.updateDurationDisplay();
             }
-
-            // Generate notes based on difficulty
-            return this.createExerciseForDifficulty(this.settings.difficulty, difficultyConfig);
+            
+            // Update based on mode
+            if (this.mode === 'scroll') {
+                this.updateScrollMode(deltaTime);
+            } else {
+                this.updateWaitMode(deltaTime);
+            }
+            
+            // Update metronome
+            if (this.metronomeEnabled) {
+                this.updateMetronome(deltaTime);
+            }
+            
+            // Check achievements
+            this.checkAchievements();
+            
+            // Update statistics
+            this.updateStatistics();
         }
-
-        createExerciseForDifficulty(difficulty, config) {
-            const notes = [];
-            const numMeasures = 4;
-            const beatsPerMeasure = 4;
-            const totalBeats = numMeasures * beatsPerMeasure;
-
-            let currentBeat = 0;
-            let xPosition = 150; // Start position on canvas
-            const beatWidth = 60; // Pixels per beat
-
-            // Define note ranges for each difficulty
-            const ranges = {
-                'beginner': { min: 60, max: 67 }, // C4 to G4 (5 white notes)
-                'elementary': { min: 57, max: 72 }, // A3 to C5
-                'intermediate': { min: 48, max: 79 }, // C3 to G5
-                'advanced': { min: 36, max: 84 }, // C2 to C6
-                'expert': { min: 21, max: 108 } // Full 88 keys
+        
+        /**
+         * Update scroll mode
+         */
+        updateScrollMode(deltaTime) {
+            // Calculate scroll speed based on tempo
+            const beatsPerSecond = this.tempo / 60;
+            const pixelsPerBeat = 100; // Adjust as needed
+            const scrollSpeed = (beatsPerSecond * pixelsPerBeat * deltaTime) / 1000;
+            
+            // Update playhead position
+            this.playheadPosition += scrollSpeed;
+            
+            // Check if notes have passed the playhead
+            this.checkNotesInScrollMode();
+            
+            // Generate new notes if needed
+            if (this.shouldGenerateMoreNotes()) {
+                this.generateMoreNotes();
+            }
+            
+            // Update playhead visual
+            this.updatePlayheadVisual();
+        }
+        
+        /**
+         * Update wait mode
+         */
+        updateWaitMode(deltaTime) {
+            // In wait mode, the game waits for the correct note to be played
+            // No automatic scrolling
+            
+            // Check if current note has been played
+            if (this.currentNoteIndex < this.notes.length) {
+                const currentNote = this.notes[this.currentNoteIndex];
+                
+                // Visual feedback for current note
+                if (!currentNote.highlighted) {
+                    currentNote.highlighted = true;
+                    this.highlightCurrentNote(currentNote);
+                }
+            }
+        }
+        
+        /**
+         * Update metronome
+         */
+        updateMetronome(deltaTime) {
+            if (!this.audio.metronome) {
+                return;
+            }
+            
+            const beatDuration = 60000 / this.tempo; // milliseconds per beat
+            const timeSinceLastBeat = Date.now() - (this.lastMetronomeBeat || 0);
+            
+            if (timeSinceLastBeat >= beatDuration) {
+                this.audio.playMetronomeTick(this.metronomeBeat === 0);
+                this.metronomeBeat = (this.metronomeBeat + 1) % 4;
+                this.lastMetronomeBeat = Date.now();
+                
+                // Visual metronome feedback
+                this.showMetronomeBeat();
+            }
+        }
+        
+        /**
+         * Render the scene
+         */
+        render() {
+            if (!this.ctx || !this.renderer) {
+                return;
+            }
+            
+            // Clear canvas
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Render staff
+            this.renderer.renderStaff();
+            
+            // Render notes
+            this.renderer.renderNotes(this.notes);
+            
+            // Render playhead (for scroll mode)
+            if (this.mode === 'scroll') {
+                this.renderer.renderPlayhead(this.playheadPosition);
+            }
+            
+            // Render feedback layer
+            this.renderer.renderFeedback();
+            
+            // Render current note indicator (for wait mode)
+            if (this.mode === 'wait' && this.currentNoteIndex < this.notes.length) {
+                this.renderer.renderCurrentNoteIndicator(this.notes[this.currentNoteIndex]);
+            }
+        }
+        
+        /**
+         * Start the game
+         */
+        start() {
+            if (this.isPlaying) {
+                return;
+            }
+            
+            this.isPlaying = true;
+            this.isPaused = false;
+            this.sessionStartTime = Date.now();
+            
+            // Update UI
+            $('#srtPlayBtn').hide();
+            $('#srtPauseBtn').show();
+            
+            // Start metronome if enabled
+            if (this.metronomeEnabled) {
+                this.lastMetronomeBeat = Date.now();
+            }
+            
+            // Play start sound
+            this.audio.playSound('start');
+            
+            // Log session start
+            this.logEvent('session_start', {
+                difficulty: this.userSettings.difficulty,
+                mode: this.mode
+            });
+        }
+        
+        /**
+         * Pause the game
+         */
+        pause() {
+            if (!this.isPlaying || this.isPaused) {
+                return;
+            }
+            
+            this.isPaused = true;
+            
+            // Update UI
+            $('#srtPauseBtn').hide();
+            $('#srtPlayBtn').show();
+            
+            // Pause audio
+            this.audio.pauseAll();
+            
+            // Log pause event
+            this.logEvent('session_pause');
+        }
+        
+        /**
+         * Stop the game
+         */
+        stop() {
+            if (!this.isPlaying) {
+                return;
+            }
+            
+            this.isPlaying = false;
+            this.isPaused = false;
+            
+            // Update UI
+            $('#srtPauseBtn').hide();
+            $('#srtPlayBtn').show();
+            
+            // Stop audio
+            this.audio.stopAll();
+            
+            // Save session data
+            this.saveSession();
+            
+            // Reset game state
+            this.currentNoteIndex = 0;
+            this.playheadPosition = 0;
+            
+            // Log session end
+            this.logEvent('session_stop', {
+                duration: this.sessionDuration,
+                score: this.score,
+                accuracy: this.getAccuracy()
+            });
+        }
+        
+        /**
+         * Reset the game
+         */
+        reset() {
+            this.stop();
+            
+            // Reset statistics
+            this.score = 0;
+            this.streak = 0;
+            this.bestStreak = 0;
+            this.correctNotes = 0;
+            this.incorrectNotes = 0;
+            this.sessionDuration = 0;
+            
+            // Generate new notes
+            this.generateInitialNotes();
+            
+            // Update displays
+            this.updateAllDisplays();
+            
+            // Clear feedback
+            this.renderer.clearFeedback();
+            
+            // Log reset event
+            this.logEvent('session_reset');
+        }
+        
+        /**
+         * Handle note input
+         */
+        handleNoteInput(note, velocity = 127, source = 'keyboard') {
+            if (!this.isPlaying || this.isPaused) {
+                // Allow playing notes even when not in game
+                this.audio.playNote(note, velocity);
+                this.piano.highlightKey(note);
+                return;
+            }
+            
+            // Play the note
+            this.audio.playNote(note, velocity);
+            this.piano.highlightKey(note);
+            
+            // Check if correct note
+            if (this.mode === 'wait') {
+                this.checkNoteInWaitMode(note);
+            } else {
+                this.checkNoteInScrollMode(note);
+            }
+            
+            // Log note input
+            this.logEvent('note_input', {
+                note: note,
+                velocity: velocity,
+                source: source
+            });
+        }
+        
+        /**
+         * Check note in wait mode
+         */
+        checkNoteInWaitMode(playedNote) {
+            if (this.currentNoteIndex >= this.notes.length) {
+                return;
+            }
+            
+            const currentNote = this.notes[this.currentNoteIndex];
+            const isCorrect = this.isCorrectNote(playedNote, currentNote);
+            
+            if (isCorrect) {
+                this.handleCorrectNote(currentNote);
+                this.currentNoteIndex++;
+                
+                // Check if exercise complete
+                if (this.currentNoteIndex >= this.notes.length) {
+                    this.handleExerciseComplete();
+                }
+            } else {
+                this.handleIncorrectNote(playedNote, currentNote);
+            }
+        }
+        
+        /**
+         * Check note in scroll mode
+         */
+        checkNoteInScrollMode(playedNote) {
+            // Find notes within the playhead range
+            const playheadRange = 50; // pixels
+            const notesInRange = this.notes.filter(note => {
+                const notePosition = this.getNotePosition(note);
+                return Math.abs(notePosition - this.playheadPosition) < playheadRange;
+            });
+            
+            // Check if any note matches
+            let matchFound = false;
+            for (const note of notesInRange) {
+                if (this.isCorrectNote(playedNote, note) && !note.played) {
+                    this.handleCorrectNote(note);
+                    note.played = true;
+                    matchFound = true;
+                    break;
+                }
+            }
+            
+            if (!matchFound && notesInRange.length > 0) {
+                this.handleIncorrectNote(playedNote, notesInRange[0]);
+            }
+        }
+        
+        /**
+         * Check if played note matches expected note
+         */
+        isCorrectNote(playedNote, expectedNote) {
+            // Simple MIDI number comparison
+            // Can be extended to handle enharmonic equivalents
+            return playedNote === expectedNote.midi;
+        }
+        
+        /**
+         * Handle correct note
+         */
+        handleCorrectNote(note) {
+            this.correctNotes++;
+            this.streak++;
+            this.score += this.calculateScore(note);
+            
+            if (this.streak > this.bestStreak) {
+                this.bestStreak = this.streak;
+            }
+            
+            // Visual feedback
+            this.renderer.showCorrectFeedback(note);
+            this.showFeedbackMessage('Correct!', 'success');
+            
+            // Audio feedback
+            this.audio.playSound('correct');
+            
+            // Update displays
+            this.updateScoreDisplay();
+            this.updateStreakDisplay();
+            this.updateAccuracyDisplay();
+            
+            // Check for streak achievements
+            this.checkStreakAchievements();
+        }
+        
+        /**
+         * Handle incorrect note
+         */
+        handleIncorrectNote(playedNote, expectedNote) {
+            this.incorrectNotes++;
+            this.streak = 0;
+            
+            // Visual feedback
+            if (this.userSettings.highlight_errors) {
+                this.renderer.showIncorrectFeedback(expectedNote, playedNote);
+                this.showFeedbackMessage('Try again', 'error');
+            }
+            
+            // Audio feedback
+            this.audio.playSound('incorrect');
+            
+            // Update displays
+            this.updateStreakDisplay();
+            this.updateAccuracyDisplay();
+        }
+        
+        /**
+         * Calculate score for correct note
+         */
+        calculateScore(note) {
+            let baseScore = 10;
+            
+            // Bonus for difficulty
+            const difficultyMultiplier = {
+                'beginner': 1,
+                'elementary': 1.5,
+                'intermediate': 2,
+                'advanced': 3,
+                'expert': 5
             };
-
-            const range = ranges[difficulty] || ranges['beginner'];
-
-            // Beginner: Simple quarter notes, stepwise motion
-            if (difficulty === 'beginner') {
-                let currentMidi = 60; // Start on C4 (middle C)
-
-                for (let i = 0; i < totalBeats; i++) {
-                    // Stepwise motion (mostly) with occasional repeated notes
-                    const movement = Math.random() < 0.3 ? 0 : (Math.random() < 0.5 ? 2 : -2);
-                    currentMidi = Math.max(range.min, Math.min(range.max, currentMidi + movement));
-
-                    notes.push({
-                        midi: currentMidi,
-                        duration: 1, // Quarter note
-                        type: 'note',
-                        x: xPosition,
-                        beat: currentBeat
-                    });
-
-                    currentBeat += 1;
-                    xPosition += beatWidth;
-                }
-            }
-            // Elementary: Quarter and half notes, wider range
-            else if (difficulty === 'elementary') {
-                let currentMidi = 60;
-
-                while (currentBeat < totalBeats) {
-                    // Mix of quarter and half notes
-                    const duration = Math.random() < 0.7 ? 1 : 2;
-
-                    // Stepwise or small jumps
-                    const movement = Math.random() < 0.2 ? 0 :
-                                   (Math.random() < 0.7 ? (Math.random() < 0.5 ? 2 : -2) :
-                                   (Math.random() < 0.5 ? 4 : -4));
-                    currentMidi = Math.max(range.min, Math.min(range.max, currentMidi + movement));
-
-                    notes.push({
-                        midi: currentMidi,
-                        duration: duration,
-                        type: 'note',
-                        x: xPosition,
-                        beat: currentBeat
-                    });
-
-                    currentBeat += duration;
-                    xPosition += beatWidth * duration;
-                }
-            }
-            // Intermediate: Add eighth notes and simple chords
-            else if (difficulty === 'intermediate') {
-                let currentMidi = 60;
-
-                while (currentBeat < totalBeats) {
-                    // Mix of durations
-                    const rand = Math.random();
-                    const duration = rand < 0.5 ? 1 : (rand < 0.7 ? 2 : 0.5);
-
-                    // Occasionally add a chord (2 notes)
-                    if (Math.random() < 0.2) {
-                        const bass = Math.floor(Math.random() * (range.max - range.min)) + range.min;
-                        const treble = bass + (Math.random() < 0.5 ? 3 : 4); // Third or fourth
-
-                        notes.push({
-                            midi: [bass, treble],
-                            duration: duration,
-                            type: 'chord',
-                            x: xPosition,
-                            beat: currentBeat
-                        });
-                    } else {
-                        // Larger jumps allowed
-                        const movement = Math.floor(Math.random() * 13) - 6;
-                        currentMidi = Math.max(range.min, Math.min(range.max, currentMidi + movement));
-
-                        notes.push({
-                            midi: currentMidi,
-                            duration: duration,
-                            type: 'note',
-                            x: xPosition,
-                            beat: currentBeat
-                        });
-                    }
-
-                    currentBeat += duration;
-                    xPosition += beatWidth * duration;
-                }
-            }
-            // Advanced & Expert: Complex rhythms and full chords
-            else {
-                while (currentBeat < totalBeats) {
-                    const rand = Math.random();
-                    const duration = rand < 0.3 ? 0.5 : (rand < 0.6 ? 1 : (rand < 0.8 ? 2 : 0.25));
-
-                    // More frequent chords
-                    if (Math.random() < 0.4) {
-                        const numNotes = difficulty === 'expert' ? (Math.random() < 0.5 ? 2 : 3) : 2;
-                        const chordNotes = [];
-                        const root = Math.floor(Math.random() * (range.max - range.min - 8)) + range.min;
-
-                        for (let i = 0; i < numNotes; i++) {
-                            chordNotes.push(root + (i * (Math.random() < 0.5 ? 3 : 4)));
-                        }
-
-                        notes.push({
-                            midi: chordNotes,
-                            duration: duration,
-                            type: 'chord',
-                            x: xPosition,
-                            beat: currentBeat
-                        });
-                    } else {
-                        const midi = Math.floor(Math.random() * (range.max - range.min)) + range.min;
-
-                        notes.push({
-                            midi: midi,
-                            duration: duration,
-                            type: 'note',
-                            x: xPosition,
-                            beat: currentBeat
-                        });
-                    }
-
-                    currentBeat += duration;
-                    xPosition += beatWidth * duration;
-                }
-            }
-
-            console.log(`✅ Generated ${notes.length} notes for ${difficulty} level`);
-            return notes;
-        }
-
-        playNote(midiNote, velocity = 80) {
-            if (this.audioEngine && this.audioEngine.isReady) {
-                this.audioEngine.playNote(midiNote, velocity);
-            }
-        }
-
-        stopNote(midiNote) {
-            if (this.audioEngine && this.audioEngine.isReady) {
-                this.audioEngine.stopNote(midiNote);
-            }
-        }
-
-        handleNoteInput(midiNote, source = 'unknown') {
-            console.log('🎵 Note input:', midiNote, 'from', source);
             
-            if (this.currentMode) {
-                this.currentMode.handleNoteInput(midiNote);
+            baseScore *= difficultyMultiplier[this.userSettings.difficulty] || 1;
+            
+            // Bonus for streak
+            if (this.streak > 10) {
+                baseScore *= 1.5;
+            } else if (this.streak > 5) {
+                baseScore *= 1.25;
+            }
+            
+            // Bonus for chord
+            if (note.chord && note.chord.length > 1) {
+                baseScore *= note.chord.length;
+            }
+            
+            // Bonus for accidentals
+            if (note.accidental) {
+                baseScore *= 1.2;
+            }
+            
+            return Math.round(baseScore);
+        }
+        
+        /**
+         * Handle exercise complete
+         */
+        handleExerciseComplete() {
+            this.stop();
+            
+            // Show completion modal
+            this.showCompletionModal();
+            
+            // Check for completion achievements
+            this.checkCompletionAchievements();
+            
+            // Generate new exercise
+            setTimeout(() => {
+                this.generateInitialNotes();
+                this.currentNoteIndex = 0;
+            }, 2000);
+        }
+        
+        /**
+         * Show completion modal
+         */
+        showCompletionModal() {
+            const accuracy = this.getAccuracy();
+            let message = '';
+            
+            if (accuracy >= 95) {
+                message = 'Perfect! Outstanding performance!';
+            } else if (accuracy >= 85) {
+                message = 'Excellent! Great job!';
+            } else if (accuracy >= 75) {
+                message = 'Good work! Keep practicing!';
+            } else {
+                message = 'Keep trying! Practice makes perfect!';
+            }
+            
+            // Create and show modal
+            const modal = $(`
+                <div class="srt-modal srt-completion-modal">
+                    <div class="srt-modal-content">
+                        <h2>Exercise Complete!</h2>
+                        <div class="srt-completion-stats">
+                            <div class="srt-stat-item">
+                                <span class="srt-stat-label">Score:</span>
+                                <span class="srt-stat-value">${this.score}</span>
+                            </div>
+                            <div class="srt-stat-item">
+                                <span class="srt-stat-label">Accuracy:</span>
+                                <span class="srt-stat-value">${accuracy.toFixed(1)}%</span>
+                            </div>
+                            <div class="srt-stat-item">
+                                <span class="srt-stat-label">Best Streak:</span>
+                                <span class="srt-stat-value">${this.bestStreak}</span>
+                            </div>
+                        </div>
+                        <p>${message}</p>
+                        <button class="srt-btn srt-btn-primary" onclick="$(this).closest('.srt-modal').remove()">
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            `);
+            
+            $('body').append(modal);
+            modal.fadeIn(300);
+        }
+        
+        /**
+         * Get current accuracy percentage
+         */
+        getAccuracy() {
+            const totalNotes = this.correctNotes + this.incorrectNotes;
+            if (totalNotes === 0) {
+                return 0;
+            }
+            return (this.correctNotes / totalNotes) * 100;
+        }
+        
+        /**
+         * Update all displays
+         */
+        updateAllDisplays() {
+            this.updateScoreDisplay();
+            this.updateStreakDisplay();
+            this.updateAccuracyDisplay();
+            this.updateDurationDisplay();
+            this.updateNotesPlayedDisplay();
+            this.updateCorrectNotesDisplay();
+            this.updateIncorrectNotesDisplay();
+        }
+        
+        /**
+         * Update score display
+         */
+        updateScoreDisplay() {
+            $('#srtScore').text(this.score);
+            $('#srtSessionScore').text(this.score);
+        }
+        
+        /**
+         * Update streak display
+         */
+        updateStreakDisplay() {
+            $('#srtStreak').text(this.streak);
+            $('#srtBestStreak').text(this.bestStreak);
+        }
+        
+        /**
+         * Update accuracy display
+         */
+        updateAccuracyDisplay() {
+            const accuracy = this.getAccuracy();
+            $('#srtAccuracy').text(accuracy.toFixed(1) + '%');
+            $('#srtSessionAccuracy').text(accuracy.toFixed(1) + '%');
+        }
+        
+        /**
+         * Update duration display
+         */
+        updateDurationDisplay() {
+            const minutes = Math.floor(this.sessionDuration / 60);
+            const seconds = Math.floor(this.sessionDuration % 60);
+            const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            $('#srtDuration').text(display);
+        }
+        
+        /**
+         * Update notes played display
+         */
+        updateNotesPlayedDisplay() {
+            const totalNotes = this.correctNotes + this.incorrectNotes;
+            $('#srtNotesPlayed').text(totalNotes);
+        }
+        
+        /**
+         * Update correct notes display
+         */
+        updateCorrectNotesDisplay() {
+            $('#srtCorrectNotes').text(this.correctNotes);
+        }
+        
+        /**
+         * Update incorrect notes display
+         */
+        updateIncorrectNotesDisplay() {
+            $('#srtIncorrectNotes').text(this.incorrectNotes);
+        }
+        
+        /**
+         * Show feedback message
+         */
+        showFeedbackMessage(message, type) {
+            const feedbackLayer = $('#srtFeedbackLayer');
+            const feedback = $(`<div class="srt-feedback srt-feedback-${type}">${message}</div>`);
+            
+            feedbackLayer.append(feedback);
+            
+            setTimeout(() => {
+                feedback.fadeOut(300, () => feedback.remove());
+            }, 1000);
+        }
+        
+        /**
+         * Check achievements
+         */
+        checkAchievements() {
+            // First note achievement
+            if (this.correctNotes === 1 && !this.hasAchievement('first_note')) {
+                this.unlockAchievement('first_note');
+            }
+            
+            // Perfect 10 achievement
+            if (this.streak === 10 && !this.hasAchievement('perfect_10')) {
+                this.unlockAchievement('perfect_10');
+            }
+            
+            // Speed demon achievement
+            if (this.tempo >= 150 && this.correctNotes >= 20 && !this.hasAchievement('speed_demon')) {
+                this.unlockAchievement('speed_demon');
+            }
+            
+            // Accuracy master achievement
+            if (this.getAccuracy() >= 95 && this.correctNotes >= 50 && !this.hasAchievement('accuracy_master')) {
+                this.unlockAchievement('accuracy_master');
             }
         }
-    }
-
-    /* =====================================================
-       AUDIO ENGINE (Tone.js + Salamander Piano)
-       ===================================================== */
-
-    class AudioEngine {
-        constructor() {
-            this.isReady = false;
-            this.piano = null;
-            this.metronome = null;
-            this.volume = CONFIG.AUDIO.DEFAULT_VOLUME;
-            this.reverb = null;
-            this.gain = null;
+        
+        /**
+         * Check if user has achievement
+         */
+        hasAchievement(achievementId) {
+            return this.achievements.includes(achievementId);
         }
-
-        async initialize() {
-            console.log('🔊 Initializing Audio Engine...');
-
-            try {
-                // Check if Tone.js is available
-                if (typeof Tone === 'undefined') {
-                    console.warn('⚠️ Tone.js not loaded - audio will not be available');
-                    return;
+        
+        /**
+         * Unlock achievement
+         */
+        unlockAchievement(achievementId) {
+            if (this.hasAchievement(achievementId)) {
+                return;
+            }
+            
+            this.achievements.push(achievementId);
+            
+            // Get achievement details
+            const achievement = this.config.achievements[achievementId];
+            if (!achievement) {
+                return;
+            }
+            
+            // Show achievement modal
+            this.showAchievementModal(achievement);
+            
+            // Save to server if logged in
+            if (this.config.isLoggedIn) {
+                this.saveAchievement(achievementId);
+            }
+            
+            // Play achievement sound
+            this.audio.playSound('achievement');
+        }
+        
+        /**
+         * Show achievement modal
+         */
+        showAchievementModal(achievement) {
+            $('#srtAchievementIcon').text(achievement.icon);
+            $('#srtAchievementName').text(achievement.name);
+            $('#srtAchievementDescription').text(achievement.description);
+            $('#srtAchievementXP').text(achievement.xp);
+            
+            $('#srtAchievementModal').fadeIn(300);
+        }
+        
+        /**
+         * Save achievement to server
+         */
+        saveAchievement(achievementId) {
+            $.ajax({
+                url: this.config.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'srt_unlock_achievement',
+                    nonce: this.config.nonce,
+                    achievement_id: achievementId
+                },
+                success: (response) => {
+                    if (response.success) {
+                        console.log('Achievement saved:', achievementId);
+                    }
                 }
-
-                // Create Salamander Grand Piano sampler
-                // IMPORTANT: Tone.js requires sharp notation (D#, F#) not flat (Ds, Fs)
-                // But the MP3 files are named Ds1.mp3, Fs1.mp3, etc.
-                this.piano = new Tone.Sampler({
-                    urls: {
-                        'A0': 'A0.mp3',
-                        'C1': 'C1.mp3',
-                        'D#1': 'Ds1.mp3',  // Key is D#1, file is Ds1.mp3
-                        'F#1': 'Fs1.mp3',  // Key is F#1, file is Fs1.mp3
-                        'A1': 'A1.mp3',
-                        'C2': 'C2.mp3',
-                        'D#2': 'Ds2.mp3',
-                        'F#2': 'Fs2.mp3',
-                        'A2': 'A2.mp3',
-                        'C3': 'C3.mp3',
-                        'D#3': 'Ds3.mp3',
-                        'F#3': 'Fs3.mp3',
-                        'A3': 'A3.mp3',
-                        'C4': 'C4.mp3',
-                        'D#4': 'Ds4.mp3',
-                        'F#4': 'Fs4.mp3',
-                        'A4': 'A4.mp3',
-                        'C5': 'C5.mp3',
-                        'D#5': 'Ds5.mp3',
-                        'F#5': 'Fs5.mp3',
-                        'A5': 'A5.mp3',
-                        'C6': 'C6.mp3',
-                        'D#6': 'Ds6.mp3',
-                        'F#6': 'Fs6.mp3',
-                        'A6': 'A6.mp3',
-                        'C7': 'C7.mp3',
-                        'D#7': 'Ds7.mp3',
-                        'F#7': 'Fs7.mp3',
-                        'A7': 'A7.mp3',
-                        'C8': 'C8.mp3'
+            });
+        }
+        
+        /**
+         * Save session data
+         */
+        saveSession() {
+            if (!this.config.isLoggedIn) {
+                return;
+            }
+            
+            const sessionData = {
+                total_sessions: 1,
+                total_time: this.sessionDuration,
+                total_notes: this.correctNotes + this.incorrectNotes,
+                correct_notes: this.correctNotes,
+                incorrect_notes: this.incorrectNotes,
+                avg_accuracy: this.getAccuracy(),
+                high_score: this.score,
+                best_streak: this.bestStreak,
+                session_duration: this.sessionDuration,
+                session_notes: this.correctNotes + this.incorrectNotes,
+                session_accuracy: this.getAccuracy(),
+                session_score: this.score,
+                difficulty: this.userSettings.difficulty
+            };
+            
+            $.ajax({
+                url: this.config.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'srt_save_progress',
+                    nonce: this.config.nonce,
+                    data: sessionData
+                },
+                success: (response) => {
+                    if (response.success) {
+                        console.log('Session saved');
+                    }
+                }
+            });
+        }
+        
+        /**
+         * Update statistics
+         */
+        updateStatistics() {
+            // Update session stats
+            this.updateAllDisplays();
+        }
+        
+        /**
+         * Log event for analytics
+         */
+        logEvent(eventName, eventData = {}) {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', eventName, {
+                    event_category: 'sight_reading',
+                    ...eventData
+                });
+            }
+        }
+        
+        // Settings methods
+        
+        setMode(mode) {
+            this.mode = mode;
+            $('.srt-mode-btn').removeClass('active');
+            $(`.srt-mode-btn[data-mode="${mode}"]`).addClass('active');
+            
+            // Reset for new mode
+            if (this.isPlaying) {
+                this.reset();
+            }
+        }
+        
+        setTempo(tempo) {
+            this.tempo = tempo;
+            $('#srtTempoValue').text(tempo);
+            this.scrollSpeed = tempo / 100; // Adjust scroll speed based on tempo
+        }
+        
+        toggleMetronome() {
+            this.metronomeEnabled = !this.metronomeEnabled;
+            $('#srtMetronomeBtn').toggleClass('active', this.metronomeEnabled);
+            
+            if (!this.metronomeEnabled) {
+                this.audio.stopMetronome();
+            }
+        }
+        
+        toggleSettingsPanel() {
+            $('#srtSettingsPanel').toggleClass('open');
+        }
+        
+        closeSettingsPanel() {
+            $('#srtSettingsPanel').removeClass('open');
+        }
+        
+        setDifficulty(difficulty) {
+            this.userSettings.difficulty = difficulty;
+            this.saveSettings();
+            
+            // Generate new notes for the difficulty
+            this.generateInitialNotes();
+            
+            // Update tempo range
+            const level = this.config.difficulties[difficulty];
+            if (level) {
+                const midTempo = Math.round((level.tempo_range[0] + level.tempo_range[1]) / 2);
+                this.setTempo(midTempo);
+                $('#srtTempoSlider').attr('min', level.tempo_range[0]);
+                $('#srtTempoSlider').attr('max', level.tempo_range[1]);
+            }
+        }
+        
+        setClef(clef) {
+            this.staffSettings.clef = clef;
+            $('.srt-btn-option[data-clef]').removeClass('active');
+            $(`.srt-btn-option[data-clef="${clef}"]`).addClass('active');
+            
+            // Re-render staff
+            if (this.renderer) {
+                this.renderer.setClef(clef);
+            }
+        }
+        
+        setGeneratorType(type) {
+            this.userSettings.generator_type = type;
+            $('.srt-btn-option[data-generator]').removeClass('active');
+            $(`.srt-btn-option[data-generator="${type}"]`).addClass('active');
+            
+            // Generate new notes
+            this.generateInitialNotes();
+        }
+        
+        setKeySignature(key) {
+            this.staffSettings.keySignature = key;
+            if (this.renderer) {
+                this.renderer.setKeySignature(key);
+            }
+        }
+        
+        setTimeSignature(time) {
+            this.staffSettings.timeSignature = time;
+            if (this.renderer) {
+                this.renderer.setTimeSignature(time);
+            }
+        }
+        
+        updateNoteRange() {
+            const min = $('#srtRangeMin').val();
+            const max = $('#srtRangeMax').val();
+            this.userSettings.note_range_min = min;
+            this.userSettings.note_range_max = max;
+            this.saveSettings();
+        }
+        
+        setHands(hands) {
+            this.userSettings.hands = hands;
+            $('.srt-btn-option[data-hands]').removeClass('active');
+            $(`.srt-btn-option[data-hands="${hands}"]`).addClass('active');
+            this.saveSettings();
+        }
+        
+        setAccidentals(enabled) {
+            this.userSettings.use_accidentals = enabled;
+            this.saveSettings();
+        }
+        
+        setChordDensity(density) {
+            this.userSettings.chord_density = density;
+            $('#srtChordDensityValue').text(density + ' notes');
+            this.saveSettings();
+        }
+        
+        setNoteNames(system) {
+            this.userSettings.note_names = system;
+            if (this.renderer) {
+                this.renderer.setNoteNameSystem(system);
+            }
+            this.saveSettings();
+        }
+        
+        toggleKeyboard(show) {
+            if (show) {
+                $('#srtPianoContainer').show();
+            } else {
+                $('#srtPianoContainer').hide();
+            }
+            this.userSettings.show_keyboard = show;
+            this.saveSettings();
+        }
+        
+        toggleStats(show) {
+            if (show) {
+                $('#srtStatsPanel').show();
+            } else {
+                $('#srtStatsPanel').hide();
+            }
+            this.userSettings.show_stats = show;
+            this.saveSettings();
+        }
+        
+        setHighlightErrors(enabled) {
+            this.userSettings.highlight_errors = enabled;
+            this.saveSettings();
+        }
+        
+        setPianoSound(sound) {
+            this.userSettings.piano_sound = sound;
+            this.audio.setPianoSound(sound);
+            this.saveSettings();
+        }
+        
+        setVolume(volume) {
+            this.userSettings.volume = volume;
+            $('#srtVolumeValue').text(volume + '%');
+            this.audio.setVolume(volume / 100);
+            this.saveSettings();
+        }
+        
+        setMetronomeVolume(volume) {
+            this.userSettings.metronome_volume = volume;
+            $('#srtMetronomeVolumeValue').text(volume + '%');
+            this.audio.setMetronomeVolume(volume / 100);
+            this.saveSettings();
+        }
+        
+        updateMIDISettings() {
+            const input = $('#srtMidiInput').val();
+            const output = $('#srtMidiOutput').val();
+            const channel = parseInt($('#srtMidiChannel').val());
+            
+            this.userSettings.midi_input = input;
+            this.userSettings.midi_output = output;
+            this.userSettings.midi_channel = channel;
+            
+            if (this.midi) {
+                this.midi.updateSettings(input, output, channel);
+            }
+            
+            this.saveSettings();
+        }
+        
+        uploadCustomSound() {
+            const fileInput = document.getElementById('srtSoundUpload');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Please select a sound file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('action', 'srt_upload_sound');
+            formData.append('nonce', this.config.nonce);
+            formData.append('sound_file', fileInput.files[0]);
+            
+            $.ajax({
+                url: this.config.ajaxUrl,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: (response) => {
+                    if (response.success) {
+                        this.audio.loadCustomSound(response.data.url);
+                        this.showToast('Custom sound uploaded successfully');
+                    } else {
+                        alert('Upload failed: ' + response.data);
+                    }
+                }
+            });
+        }
+        
+        saveSettings() {
+            // Save to localStorage
+            this.saveLocalSettings();
+            
+            // Save to server if logged in
+            if (this.config.isLoggedIn) {
+                $.ajax({
+                    url: this.config.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'srt_update_settings',
+                        nonce: this.config.nonce,
+                        settings: this.userSettings
                     },
-                    baseUrl: CONFIG.AUDIO.SALAMANDER_BASE_URL,
-                    onload: () => {
-                        console.log('✅ Piano samples loaded');
-                        this.isReady = true;
-                    },
-                    onerror: (error) => {
-                        console.error('❌ Failed to load piano samples:', error);
-                        // Continue anyway - app can work without audio
+                    success: (response) => {
+                        if (response.success) {
+                            console.log('Settings saved');
+                        }
                     }
                 });
-
-                // Create reverb
-                this.reverb = new Tone.Reverb({
-                    decay: CONFIG.AUDIO.REVERB_DECAY,
-                    wet: CONFIG.AUDIO.REVERB_WET
-                }).toDestination();
-
-                // Create gain node
-                this.gain = new Tone.Gain(this.volume);
-
-                // Connect: Piano -> Gain -> Reverb -> Destination
-                this.piano.connect(this.gain);
-                this.gain.connect(this.reverb);
-
-                // Start audio context
-                await Tone.start();
-                console.log('✅ Audio context started');
-
-            } catch (error) {
-                console.error('❌ Audio engine initialization failed:', error);
-                // Don't throw - let the app continue without audio
-                console.log('Application will continue without audio playback');
             }
         }
-
-        playNote(midiNote, velocity = 0.8) {
-            if (!this.isReady || !this.piano) return;
+        
+        showToast(message, type = 'success') {
+            $('#srtToastMessage').text(message);
+            $('#srtToast').removeClass('error success').addClass(type).fadeIn(300);
             
-            const freq = Tone.Frequency(midiNote, 'midi').toFrequency();
-            this.piano.triggerAttackRelease(freq, '8n', Tone.now(), velocity / 127);
+            setTimeout(() => {
+                $('#srtToast').fadeOut(300);
+            }, 3000);
         }
-
-        stopNote(midiNote) {
-            // For piano, notes decay naturally, but we can implement sustain pedal logic here
-        }
-
-        setVolume(value) {
-            this.volume = value;
-            if (this.gain) {
-                this.gain.gain.value = value;
+        
+        handleKeyboardShortcut(e) {
+            // Space bar - play/pause
+            if (e.keyCode === 32) {
+                e.preventDefault();
+                if (this.isPlaying) {
+                    this.pause();
+                } else {
+                    this.start();
+                }
+            }
+            
+            // Escape - stop
+            if (e.keyCode === 27) {
+                this.stop();
+            }
+            
+            // R - reset
+            if (e.keyCode === 82 && e.ctrlKey) {
+                e.preventDefault();
+                this.reset();
+            }
+            
+            // M - toggle metronome
+            if (e.keyCode === 77) {
+                this.toggleMetronome();
+            }
+            
+            // S - toggle settings
+            if (e.keyCode === 83 && e.ctrlKey) {
+                e.preventDefault();
+                this.toggleSettingsPanel();
             }
         }
-
-        startMetronome(bpm) {
-            // Implement metronome logic
-            console.log('⏱️ Starting metronome at', bpm, 'BPM');
+        
+        // Additional helper methods
+        
+        shouldGenerateMoreNotes() {
+            // Check if we need to generate more notes for continuous play
+            const lastNote = this.notes[this.notes.length - 1];
+            if (!lastNote) {
+                return true;
+            }
+            
+            const lastNotePosition = this.getNotePosition(lastNote);
+            const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);
+            
+            return lastNotePosition < this.playheadPosition + canvasWidth;
         }
-
-        stopMetronome() {
-            console.log('⏱️ Stopping metronome');
+        
+        generateMoreNotes() {
+            const newNotes = this.noteGenerator.generate();
+            
+            // Offset the new notes to continue from the last note
+            const lastNote = this.notes[this.notes.length - 1];
+            const offset = lastNote ? lastNote.measure + 1 : 0;
+            
+            newNotes.forEach(note => {
+                note.measure += offset;
+            });
+            
+            this.notes = this.notes.concat(newNotes);
+        }
+        
+        getNotePosition(note) {
+            // Calculate the x position of a note based on its measure and beat
+            const measureWidth = 200; // pixels per measure
+            const beatWidth = measureWidth / 4; // assuming 4/4 time
+            
+            return (note.measure * measureWidth) + (note.beat * beatWidth);
+        }
+        
+        checkNotesInScrollMode() {
+            // Check if any notes have passed the playhead without being played
+            const missedNotes = this.notes.filter(note => {
+                const notePosition = this.getNotePosition(note);
+                return !note.played && notePosition < this.playheadPosition - 50;
+            });
+            
+            missedNotes.forEach(note => {
+                if (!note.missed) {
+                    note.missed = true;
+                    this.handleMissedNote(note);
+                }
+            });
+        }
+        
+        handleMissedNote(note) {
+            this.incorrectNotes++;
+            this.streak = 0;
+            
+            // Visual feedback
+            this.renderer.showMissedFeedback(note);
+            
+            // Update displays
+            this.updateStreakDisplay();
+            this.updateAccuracyDisplay();
+            this.updateIncorrectNotesDisplay();
+        }
+        
+        highlightCurrentNote(note) {
+            this.renderer.highlightNote(note);
+        }
+        
+        updatePlayheadVisual() {
+            const playhead = document.getElementById('srtPlayhead');
+            if (playhead) {
+                const canvasRect = this.canvas.getBoundingClientRect();
+                const x = canvasRect.width / 3; // Fixed position on screen
+                playhead.style.left = x + 'px';
+            }
+        }
+        
+        showMetronomeBeat() {
+            // Visual metronome indicator
+            const indicator = $('<div class="srt-metronome-beat"></div>');
+            $('#srtMetronomeBtn').append(indicator);
+            
+            setTimeout(() => {
+                indicator.remove();
+            }, 100);
+        }
+        
+        checkStreakAchievements() {
+            // Check various streak milestones
+            const streakMilestones = [10, 25, 50, 100];
+            
+            streakMilestones.forEach(milestone => {
+                if (this.streak === milestone) {
+                    const achievementId = `streak_${milestone}`;
+                    if (!this.hasAchievement(achievementId)) {
+                        // Dynamic achievement creation
+                        this.config.achievements[achievementId] = {
+                            name: `${milestone} Note Streak`,
+                            description: `Get ${milestone} notes correct in a row`,
+                            icon: '🔥',
+                            xp: milestone * 10
+                        };
+                        this.unlockAchievement(achievementId);
+                    }
+                }
+            });
+        }
+        
+        checkCompletionAchievements() {
+            // Check for perfect completion
+            if (this.getAccuracy() === 100) {
+                if (!this.hasAchievement('perfect_exercise')) {
+                    this.unlockAchievement('perfect_exercise');
+                }
+            }
         }
     }
-
-    /* =====================================================
-       VIRTUAL PIANO (88 Keys)
-       ===================================================== */
-
+    
+    /**
+     * Virtual Piano Class
+     */
     class VirtualPiano {
         constructor(engine) {
             this.engine = engine;
-            this.container = $('#srtPianoKeyboard');
+            this.container = null;
             this.keys = [];
-            this.sustainPedal = false;
+            this.octave = 4;
+            this.transpose = 0;
+            this.sustain = false;
+            this.activeNotes = new Set();
         }
-
-        initialize() {
-            console.log('🎹 Initializing Virtual Piano...');
-
-            if (!this.container || this.container.length === 0) {
-                console.error('❌ Piano container #srtPianoKeyboard not found');
+        
+        init() {
+            this.container = document.getElementById('srtPianoKeyboard');
+            if (!this.container) {
+                console.error('Piano container not found');
                 return;
             }
-
-            try {
-                this.generateKeys();
-                this.attachEventListeners();
-                console.log('✅ Virtual Piano initialized');
-            } catch (error) {
-                console.error('❌ Failed to initialize Virtual Piano:', error);
+            
+            this.createKeys();
+            this.setupEventListeners();
+            this.mapComputerKeyboard();
+        }
+        
+        createKeys() {
+            // Clear existing keys
+            this.container.innerHTML = '';
+            this.keys = [];
+            
+            // Create 3 octaves (C3 to B5)
+            for (let octave = 3; octave <= 5; octave++) {
+                this.createOctave(octave);
             }
         }
-
-        generateKeys() {
-            const totalKeys = CONFIG.PIANO.TOTAL_KEYS;
-            const startMidi = CONFIG.PIANO.START_MIDI;
+        
+        createOctave(octave) {
+            const noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+            const blackKeys = {
+                'C#': 1, 'D#': 2, 'F#': 4, 'G#': 5, 'A#': 6
+            };
             
-            // Clear container
-            this.container.empty();
+            const octaveContainer = document.createElement('div');
+            octaveContainer.className = 'srt-piano-octave';
+            octaveContainer.dataset.octave = octave;
             
-            // Pattern for black keys: [C#, D#, -, F#, G#, A#, -]
-            const blackKeyPattern = [1, 1, 0, 1, 1, 1, 0];
+            // Create white keys
+            noteNames.forEach((note, index) => {
+                const key = this.createKey(note, octave, 'white', index);
+                octaveContainer.appendChild(key);
+                this.keys.push({
+                    element: key,
+                    note: note + octave,
+                    midi: this.noteToMidi(note + octave),
+                    type: 'white'
+                });
+            });
             
-            let whiteKeyIndex = 0;
+            // Create black keys
+            Object.entries(blackKeys).forEach(([note, position]) => {
+                const key = this.createKey(note, octave, 'black', position);
+                octaveContainer.appendChild(key);
+                this.keys.push({
+                    element: key,
+                    note: note + octave,
+                    midi: this.noteToMidi(note + octave),
+                    type: 'black'
+                });
+            });
             
-            for (let i = 0; i < totalKeys; i++) {
-                const midiNote = startMidi + i;
-                const noteIndex = (midiNote - 12) % 12;
-                const octave = Math.floor((midiNote - 12) / 12);
+            this.container.appendChild(octaveContainer);
+        }
+        
+        createKey(note, octave, type, position) {
+            const key = document.createElement('div');
+            key.className = `srt-piano-key srt-piano-key-${type}`;
+            key.dataset.note = note + octave;
+            key.dataset.midi = this.noteToMidi(note + octave);
+            
+            if (type === 'black') {
+                key.style.left = `${position * 40 - 10}px`;
+            }
+            
+            // Add note label for white keys
+            if (type === 'white' && note === 'C') {
+                const label = document.createElement('span');
+                label.className = 'srt-key-label';
+                label.textContent = `C${octave}`;
+                key.appendChild(label);
+            }
+            
+            return key;
+        }
+        
+        setupEventListeners() {
+            // Mouse events
+            this.keys.forEach(key => {
+                key.element.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    this.playKey(key.midi);
+                });
                 
-                // Determine if black or white key
-                const isBlack = [1, 3, 6, 8, 10].includes(noteIndex);
-                
-                const key = $('<div>')
-                    .addClass('srt-piano-key')
-                    .addClass(isBlack ? 'black' : 'white')
-                    .attr('data-midi', midiNote)
-                    .attr('data-note', MIDI_TO_STAFF_POSITION[midiNote]?.noteName || `MIDI${midiNote}`);
-                
-                // Position keys
-                if (!isBlack) {
-                    const left = whiteKeyIndex * CONFIG.PIANO.WHITE_KEY_WIDTH;
-                    key.css({
-                        left: left + 'px',
-                        width: CONFIG.PIANO.WHITE_KEY_WIDTH + 'px',
-                        height: CONFIG.PIANO.WHITE_KEY_HEIGHT + 'px'
-                    });
-
-                    // Add label to white keys (C notes only)
-                    if (noteIndex === 0) {
-                        const label = $('<div>')
-                            .addClass('srt-key-label')
-                            .text(MIDI_TO_STAFF_POSITION[midiNote]?.noteName || '');
-                        key.append(label);
+                key.element.addEventListener('mouseup', () => {
+                    if (!this.sustain) {
+                        this.releaseKey(key.midi);
                     }
-
-                    whiteKeyIndex++;
-                } else {
-                    // Black keys positioning - placed between white keys with realistic offset
-                    // Black key appears after the white key to its left
-                    const whiteKeyWidth = CONFIG.PIANO.WHITE_KEY_WIDTH;
-                    const blackKeyWidth = CONFIG.PIANO.BLACK_KEY_WIDTH;
-
-                    // Position based on the white key position (black key comes after whiteKeyIndex-1)
-                    // Use realistic piano proportions: black keys are slightly offset
-                    const baseLeft = (whiteKeyIndex) * whiteKeyWidth - (blackKeyWidth / 2);
-                    const left = baseLeft - (whiteKeyWidth * 0.1); // Offset slightly left for realism
-
-                    key.css({
-                        left: left + 'px',
-                        width: blackKeyWidth + 'px',
-                        height: CONFIG.PIANO.BLACK_KEY_HEIGHT + 'px',
-                        zIndex: '2', // Black keys above white keys
-                        position: 'absolute'
-                    });
+                });
+                
+                key.element.addEventListener('mouseenter', (e) => {
+                    if (e.buttons === 1) {
+                        this.playKey(key.midi);
+                    }
+                });
+                
+                key.element.addEventListener('mouseleave', () => {
+                    if (!this.sustain) {
+                        this.releaseKey(key.midi);
+                    }
+                });
+            });
+            
+            // Touch events for mobile
+            this.keys.forEach(key => {
+                key.element.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    this.playKey(key.midi);
+                });
+                
+                key.element.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    if (!this.sustain) {
+                        this.releaseKey(key.midi);
+                    }
+                });
+            });
+        }
+        
+        mapComputerKeyboard() {
+            // Map computer keyboard to piano keys
+            const keyMap = {
+                // White keys
+                'a': 'C', 's': 'D', 'd': 'E', 'f': 'F', 
+                'g': 'G', 'h': 'A', 'j': 'B', 'k': 'C',
+                
+                // Black keys
+                'w': 'C#', 'e': 'D#', 't': 'F#', 'y': 'G#', 'u': 'A#',
+                
+                // Octave controls
+                'z': 'octave-down', 'x': 'octave-up',
+                
+                // Sustain
+                'c': 'sustain'
+            };
+            
+            document.addEventListener('keydown', (e) => {
+                // Don't interfere with input fields
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    return;
                 }
                 
-                this.container.append(key);
-                this.keys.push({ element: key, midi: midiNote, isBlack });
-            }
-            
-            // Set container width
-            const totalWidth = whiteKeyIndex * CONFIG.PIANO.WHITE_KEY_WIDTH;
-            this.container.css('width', totalWidth + 'px');
-            
-            console.log(`✅ Generated ${totalKeys} piano keys`);
-        }
-
-        attachEventListeners() {
-            const self = this;
-            let isMouseDown = false;
-
-            // Mouse/touch events with drag support
-            this.container.on('mousedown touchstart', '.srt-piano-key', function(e) {
+                const mapping = keyMap[e.key.toLowerCase()];
+                if (!mapping) {
+                    return;
+                }
+                
                 e.preventDefault();
-                isMouseDown = true;
-                const midi = parseInt($(this).attr('data-midi'));
-                self.handleKeyPress(midi, $(this));
-            });
-
-            // Global mouse up to detect when dragging ends
-            $(document).on('mouseup touchend', function() {
-                if (isMouseDown) {
-                    isMouseDown = false;
-                    // Release all active keys
-                    self.container.find('.srt-piano-key.active').each(function() {
-                        const midi = parseInt($(this).attr('data-midi'));
-                        self.handleKeyRelease(midi, $(this));
-                    });
+                
+                if (mapping === 'octave-down') {
+                    this.changeOctave(-1);
+                } else if (mapping === 'octave-up') {
+                    this.changeOctave(1);
+                } else if (mapping === 'sustain') {
+                    this.toggleSustain();
+                } else {
+                    const note = mapping + this.octave;
+                    const midi = this.noteToMidi(note) + this.transpose;
+                    
+                    if (!this.activeNotes.has(midi)) {
+                        this.playKey(midi);
+                    }
                 }
             });
-
-            // Mouse enter for drag support - play note when dragging over keys
-            this.container.on('mouseenter', '.srt-piano-key', function(e) {
-                if (isMouseDown) {
-                    const midi = parseInt($(this).attr('data-midi'));
-                    self.handleKeyPress(midi, $(this));
+            
+            document.addEventListener('keyup', (e) => {
+                const mapping = keyMap[e.key.toLowerCase()];
+                if (!mapping || mapping === 'octave-down' || mapping === 'octave-up') {
+                    return;
                 }
-            });
-
-            // Mouse leave - release note if not sustaining
-            this.container.on('mouseleave', '.srt-piano-key', function(e) {
-                if (isMouseDown && !self.sustainPedal) {
-                    const midi = parseInt($(this).attr('data-midi'));
-                    self.handleKeyRelease(midi, $(this));
+                
+                if (mapping === 'sustain') {
+                    // Sustain handled by toggle
+                    return;
+                }
+                
+                const note = mapping + this.octave;
+                const midi = this.noteToMidi(note) + this.transpose;
+                
+                if (!this.sustain) {
+                    this.releaseKey(midi);
                 }
             });
         }
-
-        handleKeyPress(midiNote, keyElement) {
-            if (keyElement.hasClass('active')) return;
-            
-            keyElement.addClass('active');
-            
-            // Add ripple effect
-            const ripple = $('<div>').addClass('srt-key-ripple');
-            keyElement.append(ripple);
-            
-            setTimeout(() => ripple.remove(), 600);
-            
-            // Play sound
-            this.engine.playNote(midiNote);
-            
-            // Notify engine
-            this.engine.handleNoteInput(midiNote, 'virtual-piano');
+        
+        playKey(midi) {
+            this.activeNotes.add(midi);
+            this.highlightKey(midi);
+            this.engine.handleNoteInput(midi, 127, 'piano');
         }
-
-        handleKeyRelease(midiNote, keyElement) {
-            if (!this.sustainPedal) {
-                keyElement.removeClass('active');
-                this.engine.stopNote(midiNote);
+        
+        releaseKey(midi) {
+            this.activeNotes.delete(midi);
+            this.unhighlightKey(midi);
+            
+            if (this.engine.audio) {
+                this.engine.audio.releaseNote(midi);
             }
         }
-
-        highlightKey(midiNote, className = 'active') {
-            const key = this.container.find(`[data-midi="${midiNote}"]`);
-            key.addClass(className);
+        
+        highlightKey(midi) {
+            const key = this.keys.find(k => k.midi === midi);
+            if (key) {
+                key.element.classList.add('active');
+            }
+        }
+        
+        unhighlightKey(midi) {
+            const key = this.keys.find(k => k.midi === midi);
+            if (key) {
+                key.element.classList.remove('active');
+            }
+        }
+        
+        changeOctave(direction) {
+            const newOctave = this.octave + direction;
+            if (newOctave >= 1 && newOctave <= 7) {
+                this.octave = newOctave;
+                $('#srtOctaveValue').text(this.octave);
+            }
+        }
+        
+        setTranspose(semitones) {
+            this.transpose = semitones;
+        }
+        
+        toggleSustain() {
+            this.sustain = !this.sustain;
+            $('#srtSustainBtn').toggleClass('active', this.sustain);
             
-            setTimeout(() => {
-                key.removeClass(className);
-            }, 500);
+            if (!this.sustain) {
+                // Release all sustained notes
+                this.activeNotes.forEach(midi => {
+                    this.releaseKey(midi);
+                });
+            }
+        }
+        
+        noteToMidi(note) {
+            const noteMap = {
+                'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
+                'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8,
+                'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11
+            };
+            
+            const matches = note.match(/([A-G]#?b?)(\d+)/);
+            if (!matches) {
+                return 60; // Default to middle C
+            }
+            
+            const noteName = matches[1];
+            const octave = parseInt(matches[2]);
+            
+            return (octave + 1) * 12 + (noteMap[noteName] || 0);
         }
     }
-
-    /* =====================================================
-       STAFF RENDERER (Canvas)
-       ===================================================== */
-
-    class StaffRenderer {
-        constructor(engine) {
-            this.engine = engine;
-            this.canvas = document.getElementById('srtScoreCanvas');
-            this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
-            this.notes = [];
-        }
-
-        initialize() {
-            if (!this.canvas || !this.ctx) {
-                console.error('❌ Canvas #srtScoreCanvas not found');
-                return;
-            }
-
-            console.log('🎼 Initializing Staff Renderer...');
-
-            try {
-                // Set canvas size
-                this.canvas.width = CONFIG.STAFF.CANVAS_WIDTH;
-                this.canvas.height = CONFIG.STAFF.GRAND_STAFF_HEIGHT;
-
-                // Draw initial staff
-                this.drawGrandStaff();
-                console.log('✅ Staff Renderer initialized');
-            } catch (error) {
-                console.error('❌ Failed to initialize Staff Renderer:', error);
-            }
-        }
-
-        drawGrandStaff() {
-            const ctx = this.ctx;
-            const height = CONFIG.STAFF.HEIGHT;
-            const spacing = CONFIG.STAFF.LINE_SPACING;
-            
-            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            
-            // Treble staff (top)
-            this.drawStaff(20, 'treble');
-            
-            // Bass staff (bottom)
-            this.drawStaff(20 + height + 20, 'bass');
-            
-            // Brace/bracket
-            this.drawBrace();
-        }
-
-        drawStaff(y, clef) {
-            const ctx = this.ctx;
-            const spacing = CONFIG.STAFF.LINE_SPACING;
-            
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 1;
-            
-            // Draw 5 lines
-            for (let i = 0; i < 5; i++) {
-                ctx.beginPath();
-                ctx.moveTo(50, y + i * spacing);
-                ctx.lineTo(this.canvas.width - 50, y + i * spacing);
-                ctx.stroke();
-            }
-            
-            // Draw clef symbol
-            ctx.font = '48px Bravura, serif';
-            ctx.fillStyle = '#000000';
-            
-            if (clef === 'treble') {
-                ctx.fillText('𝄞', 60, y + 30); // Treble clef
-            } else {
-                ctx.fillText('𝄢', 60, y + 10); // Bass clef
-            }
-        }
-
-        drawBrace() {
-            // Draw brace connecting staves
-            const ctx = this.ctx;
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2;
-            
-            ctx.beginPath();
-            ctx.moveTo(40, 20);
-            ctx.lineTo(40, 20 + CONFIG.STAFF.HEIGHT);
-            ctx.moveTo(40, 20 + CONFIG.STAFF.HEIGHT + 20);
-            ctx.lineTo(40, 20 + CONFIG.STAFF.HEIGHT + 20 + CONFIG.STAFF.HEIGHT);
-            ctx.stroke();
-        }
-
-        render(notes) {
-            this.notes = notes;
-            this.drawGrandStaff();
-            
-            // Draw each note
-            notes.forEach(note => {
-                this.drawNote(note);
-            });
-        }
-
-        drawNote(note) {
-            // Handle both single notes and chords
-            const midiNotes = Array.isArray(note.midi) ? note.midi : [note.midi];
-            const ctx = this.ctx;
-            const x = note.x || 100;
-
-            // Draw each note in the chord
-            midiNotes.forEach((midi, index) => {
-                const position = MIDI_TO_STAFF_POSITION[midi];
-                if (!position) return;
-
-                const baseY = position.staff === 'treble' ? 20 : (20 + CONFIG.STAFF.HEIGHT + 20);
-                const y = baseY + position.line * (CONFIG.STAFF.LINE_SPACING / 2);
-
-                // Draw note head
-                ctx.fillStyle = '#000000';
-                ctx.beginPath();
-                ctx.ellipse(x, y, 6, 4, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Draw stem only once for chords (from the outermost note)
-                if (index === 0 && note.duration < 4) { // Not whole note
-                    ctx.strokeStyle = '#000000';
-                    ctx.lineWidth = 1.5;
-                    ctx.beginPath();
-                    ctx.moveTo(x + 6, y);
-                    ctx.lineTo(x + 6, y - 30);
-                    ctx.stroke();
-                }
-
-                // Draw ledger lines if needed
-                if (position.ledgerLines > 0) {
-                    this.drawLedgerLines(x, y, position.ledgerLines, position.staff);
-                }
-            });
-        }
-
-        drawLedgerLines(x, y, count, staff) {
-            const ctx = this.ctx;
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 1;
-            
-            for (let i = 0; i < count; i++) {
-                const lineY = staff === 'treble' ? y + (i + 1) * 10 : y - (i + 1) * 10;
-                ctx.beginPath();
-                ctx.moveTo(x - 10, lineY);
-                ctx.lineTo(x + 10, lineY);
-                ctx.stroke();
-            }
-        }
-    }
-
-    /* =====================================================
-       MIDI HANDLER (Web MIDI API)
-       ===================================================== */
-
-    class MIDIHandler {
+    
+    /**
+     * MIDI Manager Class
+     */
+    class MIDIManager {
         constructor(engine) {
             this.engine = engine;
             this.midiAccess = null;
-            this.inputs = [];
-            this.selectedInput = null;
+            this.activeInput = null;
+            this.activeOutput = null;
+            this.channel = 1;
         }
-
-        async initialize() {
-            console.log('🎛️ Initializing MIDI Handler...');
-            
+        
+        async init() {
             if (!navigator.requestMIDIAccess) {
-                console.warn('⚠️ Web MIDI API not supported in this browser');
+                console.log('Web MIDI API not supported');
+                this.updateStatus('unsupported');
                 return;
             }
             
             try {
                 this.midiAccess = await navigator.requestMIDIAccess();
-                console.log('✅ MIDI Access granted');
-                
-                this.refreshDevices();
-                
-                // Listen for device changes
-                this.midiAccess.onstatechange = () => {
-                    this.refreshDevices();
-                };
-                
+                this.setupMIDI();
+                this.updateStatus('connected');
             } catch (error) {
-                console.error('❌ MIDI initialization failed:', error);
+                console.error('Failed to access MIDI:', error);
+                this.updateStatus('error');
             }
         }
-
-        refreshDevices() {
-            this.inputs = [];
-            const inputSelect = $('#srtMidiInput');
-            inputSelect.empty().append('<option value="">Select MIDI Input...</option>');
+        
+        setupMIDI() {
+            // Populate device lists
+            this.populateDevices();
             
-            if (!this.midiAccess) return;
+            // Listen for device changes
+            this.midiAccess.onstatechange = () => {
+                this.populateDevices();
+            };
             
-            this.midiAccess.inputs.forEach(input => {
-                this.inputs.push(input);
-                inputSelect.append(`<option value="${input.id}">${input.name}</option>`);
+            // Auto-connect first available device
+            const inputs = Array.from(this.midiAccess.inputs.values());
+            if (inputs.length > 0) {
+                this.setInput(inputs[0]);
+            }
+        }
+        
+        populateDevices() {
+            // Populate input devices
+            const inputSelect = document.getElementById('srtMidiInput');
+            inputSelect.innerHTML = '<option value="none">No MIDI Device</option>';
+            
+            this.midiAccess.inputs.forEach((input) => {
+                const option = document.createElement('option');
+                option.value = input.id;
+                option.textContent = input.name;
+                inputSelect.appendChild(option);
             });
             
-            console.log(`🎹 Found ${this.inputs.length} MIDI input(s)`);
+            // Populate output devices
+            const outputSelect = document.getElementById('srtMidiOutput');
+            outputSelect.innerHTML = '<option value="none">Built-in Piano</option>';
+            
+            this.midiAccess.outputs.forEach((output) => {
+                const option = document.createElement('option');
+                option.value = output.id;
+                option.textContent = output.name;
+                outputSelect.appendChild(option);
+            });
         }
-
-        connectInput(inputId) {
-            const input = this.midiAccess.inputs.get(inputId);
-            if (!input) return;
-            
-            this.selectedInput = input;
-            input.onmidimessage = (message) => this.handleMIDIMessage(message);
-            
-            console.log('✅ Connected to:', input.name);
-            $('#srtMidiStatusText').text(`Connected: ${input.name}`);
-            $('#srtMidiIndicator').addClass('connected');
-            $('#srtMidiConnectBtn').addClass('connected');
-        }
-
-        handleMIDIMessage(message) {
-            const [status, note, velocity] = message.data;
-            const command = status & 0xF0;
-            
-            if (command === 144 && velocity > 0) {
-                // Note On
-                this.engine.handleNoteInput(note, 'midi');
-                this.engine.playNote(note, velocity);
-            } else if (command === 128 || (command === 144 && velocity === 0)) {
-                // Note Off
-                this.engine.stopNote(note);
-            }
-        }
-    }
-
-    /* =====================================================
-       KEYBOARD INPUT (PC Keyboard Fallback)
-       ===================================================== */
-
-    class KeyboardInput {
-        constructor(engine) {
-            this.engine = engine;
-            this.activeKeys = new Set();
-        }
-
-        initialize() {
-            console.log('⌨️ Initializing Keyboard Input...');
-            
-            $(document).on('keydown', (e) => this.handleKeyDown(e));
-            $(document).on('keyup', (e) => this.handleKeyUp(e));
-        }
-
-        handleKeyDown(e) {
-            const key = e.key.toLowerCase();
-            
-            // Prevent repeat
-            if (this.activeKeys.has(key)) return;
-            
-            const midiNote = KEYBOARD_TO_MIDI[key];
-            if (midiNote !== undefined) {
-                e.preventDefault();
-                this.activeKeys.add(key);
-                this.engine.handleNoteInput(midiNote, 'keyboard');
-                this.engine.playNote(midiNote);
+        
+        setInput(input) {
+            // Remove previous listener
+            if (this.activeInput) {
+                this.activeInput.onmidimessage = null;
             }
             
-            // Sustain pedal (ALT key)
-            if (e.key === 'Alt') {
-                e.preventDefault();
-                this.engine.virtualPiano.sustainPedal = true;
-                $('#srtSustainIndicator').addClass('active');
-            }
-        }
-
-        handleKeyUp(e) {
-            const key = e.key.toLowerCase();
-            
-            this.activeKeys.delete(key);
-            
-            const midiNote = KEYBOARD_TO_MIDI[key];
-            if (midiNote !== undefined) {
-                this.engine.stopNote(midiNote);
+            if (typeof input === 'string') {
+                input = this.midiAccess.inputs.get(input);
             }
             
-            // Sustain pedal release
-            if (e.key === 'Alt') {
-                this.engine.virtualPiano.sustainPedal = false;
-                $('#srtSustainIndicator').removeClass('active');
+            if (!input) {
+                return;
             }
+            
+            this.activeInput = input;
+            
+            // Set up message handler
+            this.activeInput.onmidimessage = (message) => {
+                this.handleMIDIMessage(message);
+            };
+            
+            // Update UI
+            document.getElementById('srtMidiInput').value = input.id;
+            this.updateStatus('connected');
         }
-    }
-
-    /* =====================================================
-       WAIT MODE
-       ===================================================== */
-
-    class WaitMode {
-        constructor(engine) {
-            this.engine = engine;
-            this.notes = [];
-            this.currentIndex = 0;
-        }
-
-        initialize() {
-            console.log('⏸️ Initializing Wait Mode...');
-        }
-
-        setExercise(notes) {
-            this.notes = notes;
-            this.currentIndex = 0;
-        }
-
-        handleNoteInput(midiNote) {
-            if (this.currentIndex >= this.notes.length) return;
-
-            const expectedNote = this.notes[this.currentIndex];
-            const expectedMidi = Array.isArray(expectedNote.midi) ? expectedNote.midi : [expectedNote.midi];
-
-            // Check if the played note is one of the expected notes (for chords)
-            const isCorrect = expectedMidi.includes(midiNote);
-
-            if (isCorrect) {
-                // Correct note!
-                console.log('✅ Correct note!');
-
-                // Visual feedback
-                this.engine.virtualPiano.highlightKey(midiNote, 'correct');
-
-                // For chords, check if all notes have been played
-                if (!this.playedNotes) {
-                    this.playedNotes = new Set();
-                }
-                this.playedNotes.add(midiNote);
-
-                // If all notes in chord are played, move to next
-                if (this.playedNotes.size >= expectedMidi.length) {
-                    this.engine.stats.hits++;
-                    this.engine.stats.streak++;
-                    this.engine.stats.bestStreak = Math.max(this.engine.stats.bestStreak, this.engine.stats.streak);
-
-                    // Move to next note
-                    this.currentIndex++;
-                    this.playedNotes = new Set(); // Reset for next chord
-
-                    if (this.currentIndex >= this.notes.length) {
-                        console.log('🎉 Exercise complete!');
-                        this.engine.generateNewExercise(); // Auto-generate new exercise
-                    }
+        
+        setOutput(output) {
+            if (typeof output === 'string') {
+                if (output === 'none') {
+                    this.activeOutput = null;
+                } else {
+                    this.activeOutput = this.midiAccess.outputs.get(output);
                 }
             } else {
-                // Wrong note
-                console.log('❌ Wrong note');
-                this.engine.stats.misses++;
-                this.engine.stats.streak = 0;
-
-                // Visual feedback
-                this.engine.virtualPiano.highlightKey(midiNote, 'error');
-
-                // Reset played notes for chord
-                this.playedNotes = new Set();
+                this.activeOutput = output;
             }
-
-            // Update stats display
-            this.engine.statsTracker.updateDisplay();
+            
+            // Update UI
+            if (this.activeOutput) {
+                document.getElementById('srtMidiOutput').value = this.activeOutput.id;
+            }
         }
-
-        cleanup() {
-            console.log('🧹 Cleaning up Wait Mode');
+        
+        handleMIDIMessage(message) {
+            const [status, data1, data2] = message.data;
+            const command = status >> 4;
+            const channel = (status & 0x0F) + 1;
+            
+            // Check if message is on our channel
+            if (this.channel !== 0 && channel !== this.channel) {
+                return;
+            }
+            
+            switch (command) {
+                case 9: // Note On
+                    if (data2 > 0) {
+                        this.handleNoteOn(data1, data2);
+                    } else {
+                        this.handleNoteOff(data1);
+                    }
+                    break;
+                    
+                case 8: // Note Off
+                    this.handleNoteOff(data1);
+                    break;
+                    
+                case 11: // Control Change
+                    this.handleControlChange(data1, data2);
+                    break;
+                    
+                case 14: // Pitch Bend
+                    this.handlePitchBend(data1, data2);
+                    break;
+            }
+        }
+        
+        handleNoteOn(note, velocity) {
+            this.engine.handleNoteInput(note, velocity, 'midi');
+            
+            // Forward to output if configured
+            if (this.activeOutput) {
+                const statusByte = 0x90 | (this.channel - 1);
+                this.activeOutput.send([statusByte, note, velocity]);
+            }
+        }
+        
+        handleNoteOff(note) {
+            if (this.engine.piano) {
+                this.engine.piano.releaseKey(note);
+            }
+            
+            // Forward to output
+            if (this.activeOutput) {
+                const statusByte = 0x80 | (this.channel - 1);
+                this.activeOutput.send([statusByte, note, 0]);
+            }
+        }
+        
+        handleControlChange(controller, value) {
+            // Handle sustain pedal
+            if (controller === 64) {
+                if (value >= 64) {
+                    this.engine.piano.sustain = true;
+                } else {
+                    this.engine.piano.sustain = false;
+                }
+            }
+        }
+        
+        handlePitchBend(lsb, msb) {
+            // Implement pitch bend if needed
+            const bend = (msb << 7) | lsb;
+            // Map to -2 to +2 semitones
+            const semitones = ((bend - 8192) / 8192) * 2;
+            // Apply pitch bend to audio engine
+        }
+        
+        updateSettings(input, output, channel) {
+            this.channel = channel;
+            
+            if (input !== 'none') {
+                this.setInput(input);
+            }
+            
+            if (output !== 'none') {
+                this.setOutput(output);
+            } else {
+                this.activeOutput = null;
+            }
+        }
+        
+        refreshDevices() {
+            this.populateDevices();
+        }
+        
+        updateStatus(status) {
+            const statusElement = document.getElementById('srtMidiStatus');
+            const statusText = document.getElementById('srtMidiStatusText');
+            
+            statusElement.className = 'srt-status-indicator';
+            
+            switch (status) {
+                case 'connected':
+                    statusElement.classList.add('connected');
+                    statusText.textContent = 'MIDI Connected';
+                    break;
+                case 'disconnected':
+                    statusElement.classList.add('disconnected');
+                    statusText.textContent = 'MIDI Disconnected';
+                    break;
+                case 'error':
+                    statusElement.classList.add('error');
+                    statusText.textContent = 'MIDI Error';
+                    break;
+                case 'unsupported':
+                    statusText.textContent = 'MIDI Not Supported';
+                    break;
+            }
         }
     }
-
-    /* =====================================================
-       SCROLL MODE
-       ===================================================== */
-
-    class ScrollMode {
+    
+    /**
+     * Audio Manager Class
+     */
+    class AudioManager {
         constructor(engine) {
             this.engine = engine;
-            this.notes = [];
-            this.isPlaying = false;
+            this.context = null;
+            this.masterGain = null;
+            this.pianoGain = null;
+            this.metronomeGain = null;
+            this.compressor = null;
+            this.reverb = null;
+            this.samples = {};
+            this.activeSounds = new Map();
+            this.metronome = null;
+            this.customSound = null;
         }
-
-        initialize() {
-            console.log('▶️ Initializing Scroll Mode...');
-            $('#srtPlayhead').show();
-        }
-
-        setExercise(notes) {
-            this.notes = notes;
-        }
-
-        start() {
-            this.isPlaying = true;
-            this.animate();
-        }
-
-        stop() {
-            this.isPlaying = false;
-        }
-
-        animate() {
-            if (!this.isPlaying) return;
+        
+        init() {
+            // Create audio context
+            this.context = new (window.AudioContext || window.webkitAudioContext)();
             
-            // Implement scrolling logic
+            // Create master gain
+            this.masterGain = this.context.createGain();
+            this.masterGain.gain.value = 0.7;
             
-            requestAnimationFrame(() => this.animate());
+            // Create separate gains for piano and metronome
+            this.pianoGain = this.context.createGain();
+            this.pianoGain.gain.value = 1;
+            this.pianoGain.connect(this.masterGain);
+            
+            this.metronomeGain = this.context.createGain();
+            this.metronomeGain.gain.value = 0.5;
+            this.metronomeGain.connect(this.masterGain);
+            
+            // Create compressor for overall dynamics
+            this.compressor = this.context.createDynamicsCompressor();
+            this.compressor.threshold.value = -24;
+            this.compressor.knee.value = 30;
+            this.compressor.ratio.value = 12;
+            this.compressor.attack.value = 0.003;
+            this.compressor.release.value = 0.25;
+            
+            this.masterGain.connect(this.compressor);
+            this.compressor.connect(this.context.destination);
+            
+            // Load default sounds
+            this.loadDefaultSounds();
+            
+            // Resume context on user interaction
+            document.addEventListener('click', () => {
+                if (this.context.state === 'suspended') {
+                    this.context.resume();
+                }
+            }, { once: true });
         }
-
-        handleNoteInput(midiNote) {
-            // Check if note is at playhead position
+        
+        loadDefaultSounds() {
+            // Load UI sounds
+            this.loadSound('correct', '/assets/sounds/correct.mp3');
+            this.loadSound('incorrect', '/assets/sounds/incorrect.mp3');
+            this.loadSound('achievement', '/assets/sounds/achievement.mp3');
+            this.loadSound('start', '/assets/sounds/start.mp3');
+            
+            // Load metronome sounds
+            this.loadSound('tick', '/assets/sounds/tick.mp3');
+            this.loadSound('tock', '/assets/sounds/tock.mp3');
         }
-
-        cleanup() {
-            this.stop();
-            $('#srtPlayhead').hide();
+        
+        async loadSound(name, url) {
+            try {
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+                const audioBuffer = await this.context.decodeAudioData(arrayBuffer);
+                this.samples[name] = audioBuffer;
+            } catch (error) {
+                console.error(`Failed to load sound ${name}:`, error);
+            }
+        }
+        
+        playSound(name) {
+            const buffer = this.samples[name];
+            if (!buffer) {
+                return;
+            }
+            
+            const source = this.context.createBufferSource();
+            source.buffer = buffer;
+            source.connect(this.masterGain);
+            source.start();
+        }
+        
+        playNote(midi, velocity = 127) {
+            // Convert MIDI to frequency
+            const frequency = 440 * Math.pow(2, (midi - 69) / 12);
+            
+            // Create oscillators for richer sound
+            const osc1 = this.context.createOscillator();
+            const osc2 = this.context.createOscillator();
+            const osc3 = this.context.createOscillator();
+            
+            osc1.type = 'sine';
+            osc2.type = 'sine';
+            osc3.type = 'sine';
+            
+            osc1.frequency.value = frequency;
+            osc2.frequency.value = frequency * 2; // First harmonic
+            osc3.frequency.value = frequency * 3; // Second harmonic
+            
+            // Create envelope
+            const envelope = this.context.createGain();
+            envelope.gain.value = 0;
+            
+            // Create individual gains for harmonics
+            const gain1 = this.context.createGain();
+            const gain2 = this.context.createGain();
+            const gain3 = this.context.createGain();
+            
+            gain1.gain.value = 1;
+            gain2.gain.value = 0.3;
+            gain3.gain.value = 0.15;
+            
+            // Connect oscillators
+            osc1.connect(gain1);
+            osc2.connect(gain2);
+            osc3.connect(gain3);
+            
+            gain1.connect(envelope);
+            gain2.connect(envelope);
+            gain3.connect(envelope);
+            
+            envelope.connect(this.pianoGain);
+            
+            // Apply velocity
+            const maxGain = (velocity / 127) * 0.3;
+            
+            // ADSR envelope
+            const now = this.context.currentTime;
+            const attack = 0.01;
+            const decay = 0.1;
+            const sustain = 0.7;
+            const release = 0.5;
+            
+            envelope.gain.setValueAtTime(0, now);
+            envelope.gain.linearRampToValueAtTime(maxGain, now + attack);
+            envelope.gain.linearRampToValueAtTime(maxGain * sustain, now + attack + decay);
+            
+            // Start oscillators
+            osc1.start(now);
+            osc2.start(now);
+            osc3.start(now);
+            
+            // Store for release
+            this.activeSounds.set(midi, {
+                oscillators: [osc1, osc2, osc3],
+                envelope: envelope,
+                startTime: now
+            });
+        }
+        
+        releaseNote(midi) {
+            const sound = this.activeSounds.get(midi);
+            if (!sound) {
+                return;
+            }
+            
+            const now = this.context.currentTime;
+            const release = 0.5;
+            
+            sound.envelope.gain.cancelScheduledValues(now);
+            sound.envelope.gain.setValueAtTime(sound.envelope.gain.value, now);
+            sound.envelope.gain.linearRampToValueAtTime(0, now + release);
+            
+            sound.oscillators.forEach(osc => {
+                osc.stop(now + release);
+            });
+            
+            this.activeSounds.delete(midi);
+        }
+        
+        playMetronomeTick(isDownbeat) {
+            const osc = this.context.createOscillator();
+            const envelope = this.context.createGain();
+            
+            osc.frequency.value = isDownbeat ? 1000 : 800;
+            osc.type = 'sine';
+            
+            osc.connect(envelope);
+            envelope.connect(this.metronomeGain);
+            
+            const now = this.context.currentTime;
+            envelope.gain.setValueAtTime(1, now);
+            envelope.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            
+            osc.start(now);
+            osc.stop(now + 0.1);
+        }
+        
+        stopMetronome() {
+            // Metronome is event-based, no continuous sound to stop
+        }
+        
+        setVolume(value) {
+            this.masterGain.gain.value = value;
+        }
+        
+        setMetronomeVolume(value) {
+            this.metronomeGain.gain.value = value;
+        }
+        
+        setPianoSound(sound) {
+            // Switch between different piano synthesis types
+            // This could load different samples or change synthesis parameters
+        }
+        
+        loadCustomSound(url) {
+            this.loadSound('custom', url);
+            this.customSound = url;
+        }
+        
+        pauseAll() {
+            // Pause is handled by the engine stopping updates
+        }
+        
+        stopAll() {
+            // Stop all active sounds
+            this.activeSounds.forEach((sound, midi) => {
+                this.releaseNote(midi);
+            });
         }
     }
-
-    /* =====================================================
-       FREE MODE
-       ===================================================== */
-
-    class FreeMode {
+    
+    /**
+     * Note Generator Class
+     */
+    class NoteGenerator {
         constructor(engine) {
             this.engine = engine;
-            this.playedNotes = [];
         }
-
-        initialize() {
-            console.log('🎹 Initializing Free Mode...');
+        
+        generate() {
+            const settings = this.engine.userSettings;
+            const difficulty = this.engine.config.difficulties[settings.difficulty];
+            
+            switch (settings.generator_type) {
+                case 'triads':
+                    return this.generateTriads();
+                case 'scales':
+                    return this.generateScales();
+                case 'progression':
+                    return this.generateProgression();
+                default:
+                    return this.generateRandom();
+            }
         }
-
-        setExercise(notes) {
-            // Free mode doesn't use predefined exercises
+        
+        generateRandom() {
+            const notes = [];
+            const measureCount = 4;
+            const beatsPerMeasure = 4;
+            
+            for (let measure = 0; measure < measureCount; measure++) {
+                for (let beat = 0; beat < beatsPerMeasure; beat++) {
+                    const note = {
+                        midi: this.getRandomMidi(),
+                        duration: 'quarter',
+                        measure: measure,
+                        beat: beat,
+                        staff: Math.random() > 0.5 ? 'treble' : 'bass'
+                    };
+                    
+                    notes.push(note);
+                }
+            }
+            
+            return notes;
         }
-
-        handleNoteInput(midiNote) {
-            // Record note and display on staff
-            this.playedNotes.push({
-                midi: midiNote,
+        
+        generateTriads() {
+            const notes = [];
+            const triads = [
+                [0, 4, 7],  // Major
+                [0, 3, 7],  // Minor
+                [0, 3, 6],  // Diminished
+                [0, 4, 8]   // Augmented
+            ];
+            
+            for (let measure = 0; measure < 4; measure++) {
+                const triad = triads[Math.floor(Math.random() * triads.length)];
+                const root = 60 + Math.floor(Math.random() * 12);
+                
+                triad.forEach((interval, index) => {
+                    notes.push({
+                        midi: root + interval,
+                        duration: 'quarter',
+                        measure: measure,
+                        beat: index,
+                        staff: 'treble'
+                    });
+                });
+            }
+            
+            return notes;
+        }
+        
+        generateScales() {
+            const notes = [];
+            const scale = this.engine.config.scalePatterns.major;
+            const root = 60;
+            
+            scale.forEach((interval, index) => {
+                notes.push({
+                    midi: root + interval,
+                    duration: 'eighth',
+                    measure: Math.floor(index / 8),
+                    beat: (index % 8) * 0.5,
+                    staff: 'treble'
+                });
+            });
+            
+            // Descending
+            scale.slice().reverse().forEach((interval, index) => {
+                notes.push({
+                    midi: root + interval,
+                    duration: 'eighth',
+                    measure: Math.floor((index + scale.length) / 8),
+                    beat: ((index + scale.length) % 8) * 0.5,
+                    staff: 'treble'
+                });
+            });
+            
+            return notes;
+        }
+        
+        generateProgression() {
+            const notes = [];
+            const progression = ['I', 'vi', 'IV', 'V'];
+            const key = 60; // C
+            
+            const chordMap = {
+                'I': [0, 4, 7],
+                'ii': [2, 5, 9],
+                'iii': [4, 7, 11],
+                'IV': [5, 9, 0],
+                'V': [7, 11, 2],
+                'vi': [9, 0, 4],
+                'vii': [11, 2, 5]
+            };
+            
+            progression.forEach((chord, measure) => {
+                const intervals = chordMap[chord] || [0, 4, 7];
+                
+                intervals.forEach((interval) => {
+                    notes.push({
+                        midi: key + interval,
+                        duration: 'whole',
+                        measure: measure,
+                        beat: 0,
+                        staff: 'treble',
+                        chord: true
+                    });
+                });
+            });
+            
+            return notes;
+        }
+        
+        getRandomMidi() {
+            const min = this.midiFromNote(this.engine.userSettings.note_range_min || 'C3');
+            const max = this.midiFromNote(this.engine.userSettings.note_range_max || 'C5');
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        
+        midiFromNote(note) {
+            const noteMap = {
+                'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11
+            };
+            
+            const matches = note.match(/([A-G])(\d+)/);
+            if (!matches) {
+                return 60;
+            }
+            
+            const noteName = matches[1];
+            const octave = parseInt(matches[2]);
+            
+            return (octave + 1) * 12 + (noteMap[noteName] || 0);
+        }
+    }
+    
+    /**
+     * Staff Renderer Class
+     */
+    class StaffRenderer {
+        constructor(engine) {
+            this.engine = engine;
+            this.ctx = engine.ctx;
+            this.canvas = engine.canvas;
+            this.staffY = 100;
+            this.staffSpacing = 12;
+            this.measureWidth = 200;
+            this.clef = 'treble';
+            this.keySignature = 'C';
+            this.timeSignature = '4/4';
+            this.noteNameSystem = 'none';
+            this.feedback = [];
+        }
+        
+        resize() {
+            // Handle canvas resize
+        }
+        
+        renderStaff() {
+            const ctx = this.ctx;
+            const width = this.canvas.width / (window.devicePixelRatio || 1);
+            const height = this.canvas.height / (window.devicePixelRatio || 1);
+            
+            ctx.save();
+            
+            // Set styles
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.font = '20px Arial';
+            
+            // Render based on clef setting
+            if (this.clef === 'grand') {
+                this.renderGrandStaff();
+            } else if (this.clef === 'bass') {
+                this.renderBassStaff();
+            } else {
+                this.renderTrebleStaff();
+            }
+            
+            ctx.restore();
+        }
+        
+        renderTrebleStaff() {
+            const ctx = this.ctx;
+            const width = this.canvas.width / (window.devicePixelRatio || 1);
+            
+            // Draw staff lines
+            for (let i = 0; i < 5; i++) {
+                const y = this.staffY + (i * this.staffSpacing);
+                ctx.beginPath();
+                ctx.moveTo(50, y);
+                ctx.lineTo(width - 50, y);
+                ctx.stroke();
+            }
+            
+            // Draw clef
+            this.drawTrebleClef(60, this.staffY);
+            
+            // Draw key signature
+            this.drawKeySignature(120, this.staffY, 'treble');
+            
+            // Draw time signature
+            this.drawTimeSignature(180, this.staffY);
+            
+            // Draw bar lines
+            this.drawBarLines();
+        }
+        
+        renderBassStaff() {
+            const ctx = this.ctx;
+            const width = this.canvas.width / (window.devicePixelRatio || 1);
+            
+            // Draw staff lines
+            for (let i = 0; i < 5; i++) {
+                const y = this.staffY + (i * this.staffSpacing);
+                ctx.beginPath();
+                ctx.moveTo(50, y);
+                ctx.lineTo(width - 50, y);
+                ctx.stroke();
+            }
+            
+            // Draw clef
+            this.drawBassClef(60, this.staffY);
+            
+            // Draw key signature
+            this.drawKeySignature(120, this.staffY, 'bass');
+            
+            // Draw time signature
+            this.drawTimeSignature(180, this.staffY);
+            
+            // Draw bar lines
+            this.drawBarLines();
+        }
+        
+        renderGrandStaff() {
+            const ctx = this.ctx;
+            const width = this.canvas.width / (window.devicePixelRatio || 1);
+            const trebleY = this.staffY;
+            const bassY = this.staffY + 100;
+            
+            // Draw treble staff
+            for (let i = 0; i < 5; i++) {
+                const y = trebleY + (i * this.staffSpacing);
+                ctx.beginPath();
+                ctx.moveTo(50, y);
+                ctx.lineTo(width - 50, y);
+                ctx.stroke();
+            }
+            
+            // Draw bass staff
+            for (let i = 0; i < 5; i++) {
+                const y = bassY + (i * this.staffSpacing);
+                ctx.beginPath();
+                ctx.moveTo(50, y);
+                ctx.lineTo(width - 50, y);
+                ctx.stroke();
+            }
+            
+            // Draw brace
+            this.drawBrace(40, trebleY, bassY + this.staffSpacing * 4);
+            
+            // Draw clefs
+            this.drawTrebleClef(60, trebleY);
+            this.drawBassClef(60, bassY);
+            
+            // Draw key signatures
+            this.drawKeySignature(120, trebleY, 'treble');
+            this.drawKeySignature(120, bassY, 'bass');
+            
+            // Draw time signatures
+            this.drawTimeSignature(180, trebleY);
+            this.drawTimeSignature(180, bassY);
+            
+            // Draw bar lines connecting both staves
+            this.drawGrandStaffBarLines(trebleY, bassY);
+        }
+        
+        drawTrebleClef(x, y) {
+            const ctx = this.ctx;
+            ctx.save();
+            ctx.font = '48px Arial';
+            ctx.fillStyle = '#333';
+            ctx.fillText('𝄞', x, y + 35);
+            ctx.restore();
+        }
+        
+        drawBassClef(x, y) {
+            const ctx = this.ctx;
+            ctx.save();
+            ctx.font = '36px Arial';
+            ctx.fillStyle = '#333';
+            ctx.fillText('𝄢', x, y + 20);
+            ctx.restore();
+        }
+        
+        drawBrace(x, topY, bottomY) {
+            const ctx = this.ctx;
+            ctx.save();
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, topY);
+            ctx.bezierCurveTo(x - 10, topY + 20, x - 10, bottomY - 20, x, bottomY);
+            ctx.stroke();
+            ctx.restore();
+        }
+        
+        drawKeySignature(x, y, clef) {
+            // Draw sharps or flats based on key signature
+            const signatures = {
+                'C': [],
+                'G': ['F#'],
+                'D': ['F#', 'C#'],
+                'A': ['F#', 'C#', 'G#'],
+                'E': ['F#', 'C#', 'G#', 'D#'],
+                'B': ['F#', 'C#', 'G#', 'D#', 'A#'],
+                'F': ['Bb'],
+                'Bb': ['Bb', 'Eb'],
+                'Eb': ['Bb', 'Eb', 'Ab'],
+                'Ab': ['Bb', 'Eb', 'Ab', 'Db'],
+                'Db': ['Bb', 'Eb', 'Ab', 'Db', 'Gb']
+            };
+            
+            const accidentals = signatures[this.keySignature] || [];
+            
+            accidentals.forEach((accidental, index) => {
+                const accX = x + (index * 15);
+                const accY = this.getAccidentalY(accidental, y, clef);
+                
+                if (accidental.includes('#')) {
+                    this.drawSharp(accX, accY);
+                } else if (accidental.includes('b')) {
+                    this.drawFlat(accX, accY);
+                }
+            });
+        }
+        
+        drawTimeSignature(x, y) {
+            const ctx = this.ctx;
+            const [top, bottom] = this.timeSignature.split('/');
+            
+            ctx.save();
+            ctx.font = 'bold 24px Arial';
+            ctx.fillStyle = '#333';
+            ctx.textAlign = 'center';
+            
+            ctx.fillText(top, x, y + 15);
+            ctx.fillText(bottom, x, y + 40);
+            
+            ctx.restore();
+        }
+        
+        drawBarLines() {
+            const ctx = this.ctx;
+            const width = this.canvas.width / (window.devicePixelRatio || 1);
+            
+            for (let i = 1; i <= 4; i++) {
+                const x = 200 + (i * this.measureWidth);
+                if (x < width - 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, this.staffY);
+                    ctx.lineTo(x, this.staffY + (4 * this.staffSpacing));
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        drawGrandStaffBarLines(trebleY, bassY) {
+            const ctx = this.ctx;
+            const width = this.canvas.width / (window.devicePixelRatio || 1);
+            
+            for (let i = 1; i <= 4; i++) {
+                const x = 200 + (i * this.measureWidth);
+                if (x < width - 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, trebleY);
+                    ctx.lineTo(x, bassY + (4 * this.staffSpacing));
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        renderNotes(notes) {
+            notes.forEach(note => {
+                this.renderNote(note);
+            });
+        }
+        
+        renderNote(note) {
+            const x = this.getNoteX(note);
+            const y = this.getNoteY(note);
+            
+            const ctx = this.ctx;
+            ctx.save();
+            
+            // Draw note head
+            ctx.fillStyle = note.played ? '#4CAF50' : 
+                           note.missed ? '#F44336' : 
+                           note.highlighted ? '#C59D3A' : '#333';
+            
+            ctx.beginPath();
+            ctx.ellipse(x, y, 6, 5, -20 * Math.PI / 180, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Draw stem if needed
+            if (note.duration !== 'whole') {
+                const stemHeight = 30;
+                const stemDirection = y < this.staffY + 24 ? 1 : -1;
+                
+                ctx.beginPath();
+                ctx.moveTo(x + (stemDirection > 0 ? 5 : -5), y);
+                ctx.lineTo(x + (stemDirection > 0 ? 5 : -5), y + (stemHeight * stemDirection));
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw flags for eighth and sixteenth notes
+                if (note.duration === 'eighth' || note.duration === 'sixteenth') {
+                    this.drawFlags(x + (stemDirection > 0 ? 5 : -5), 
+                                  y + (stemHeight * stemDirection), 
+                                  stemDirection, 
+                                  note.duration);
+                }
+            }
+            
+            // Draw ledger lines if needed
+            this.drawLedgerLines(x, y);
+            
+            // Draw accidentals
+            if (note.accidental) {
+                this.drawAccidental(x - 15, y, note.accidental);
+            }
+            
+            // Draw note name if enabled
+            if (this.noteNameSystem !== 'none') {
+                this.drawNoteName(x, y + 20, note);
+            }
+            
+            ctx.restore();
+        }
+        
+        getNoteX(note) {
+            return 200 + (note.measure * this.measureWidth) + (note.beat * (this.measureWidth / 4));
+        }
+        
+        getNoteY(note) {
+            // Calculate Y position based on MIDI note number
+            const notePositions = {
+                60: this.staffY + 60,  // Middle C
+                62: this.staffY + 54,  // D
+                64: this.staffY + 48,  // E
+                65: this.staffY + 42,  // F
+                67: this.staffY + 36,  // G
+                69: this.staffY + 30,  // A
+                71: this.staffY + 24,  // B
+                72: this.staffY + 18   // C
+            };
+            
+            // Adjust for octaves
+            const octaveOffset = Math.floor((note.midi - 60) / 12) * -42;
+            const noteInOctave = note.midi % 12;
+            const baseNote = 60 + noteInOctave;
+            
+            return (notePositions[baseNote] || this.staffY + 30) + octaveOffset;
+        }
+        
+        drawLedgerLines(x, y) {
+            const ctx = this.ctx;
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            
+            // Above staff
+            if (y < this.staffY) {
+                for (let lineY = this.staffY - this.staffSpacing; lineY >= y; lineY -= this.staffSpacing) {
+                    ctx.beginPath();
+                    ctx.moveTo(x - 10, lineY);
+                    ctx.lineTo(x + 10, lineY);
+                    ctx.stroke();
+                }
+            }
+            
+            // Below staff
+            if (y > this.staffY + (4 * this.staffSpacing)) {
+                for (let lineY = this.staffY + (5 * this.staffSpacing); lineY <= y; lineY += this.staffSpacing) {
+                    ctx.beginPath();
+                    ctx.moveTo(x - 10, lineY);
+                    ctx.lineTo(x + 10, lineY);
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        drawAccidental(x, y, type) {
+            const ctx = this.ctx;
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#333';
+            
+            if (type === 'sharp') {
+                ctx.fillText('♯', x, y + 4);
+            } else if (type === 'flat') {
+                ctx.fillText('♭', x, y + 4);
+            }
+        }
+        
+        drawSharp(x, y) {
+            this.drawAccidental(x, y, 'sharp');
+        }
+        
+        drawFlat(x, y) {
+            this.drawAccidental(x, y, 'flat');
+        }
+        
+        drawFlags(x, y, direction, duration) {
+            const ctx = this.ctx;
+            const flagCount = duration === 'eighth' ? 1 : 2;
+            
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            
+            for (let i = 0; i < flagCount; i++) {
+                ctx.beginPath();
+                ctx.moveTo(x, y + (i * 6 * direction));
+                ctx.bezierCurveTo(
+                    x + 10, y + (i * 6 + 10) * direction,
+                    x + 10, y + (i * 6 + 20) * direction,
+                    x, y + (i * 6 + 25) * direction
+                );
+                ctx.stroke();
+            }
+        }
+        
+        drawNoteName(x, y, note) {
+            const ctx = this.ctx;
+            const noteName = this.getNoteNameFromMidi(note.midi);
+            
+            ctx.save();
+            ctx.font = '10px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText(noteName, x, y);
+            ctx.restore();
+        }
+        
+        getNoteNameFromMidi(midi) {
+            const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const systems = this.engine.config.notationSystems;
+            const system = systems[this.noteNameSystem] || systems.international;
+            
+            const noteName = noteNames[midi % 12];
+            return system[noteName] || noteName;
+        }
+        
+        getAccidentalY(accidental, staffY, clef) {
+            // Position accidentals correctly on staff
+            const positions = {
+                'treble': {
+                    'F#': staffY,
+                    'C#': staffY + 18,
+                    'G#': staffY + 3,
+                    'D#': staffY + 21,
+                    'A#': staffY + 6,
+                    'Bb': staffY + 24,
+                    'Eb': staffY + 9,
+                    'Ab': staffY + 27,
+                    'Db': staffY + 12,
+                    'Gb': staffY + 30
+                },
+                'bass': {
+                    'F#': staffY + 24,
+                    'C#': staffY + 6,
+                    'G#': staffY + 27,
+                    'D#': staffY + 9,
+                    'A#': staffY + 30,
+                    'Bb': staffY + 12,
+                    'Eb': staffY + 33,
+                    'Ab': staffY + 15,
+                    'Db': staffY + 36,
+                    'Gb': staffY + 18
+                }
+            };
+            
+            return positions[clef][accidental] || staffY;
+        }
+        
+        renderPlayhead(position) {
+            const ctx = this.ctx;
+            const x = 200 - (this.engine.playheadPosition % (this.measureWidth * 4));
+            
+            ctx.save();
+            ctx.strokeStyle = '#C59D3A';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#C59D3A';
+            ctx.shadowBlur = 10;
+            
+            if (this.clef === 'grand') {
+                // Span both staves
+                ctx.beginPath();
+                ctx.moveTo(x, this.staffY - 10);
+                ctx.lineTo(x, this.staffY + 160);
+                ctx.stroke();
+            } else {
+                // Single staff
+                ctx.beginPath();
+                ctx.moveTo(x, this.staffY - 10);
+                ctx.lineTo(x, this.staffY + 60);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+        
+        renderCurrentNoteIndicator(note) {
+            const x = this.getNoteX(note);
+            const y = this.getNoteY(note);
+            
+            const ctx = this.ctx;
+            ctx.save();
+            
+            ctx.strokeStyle = '#C59D3A';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#C59D3A';
+            ctx.shadowBlur = 15;
+            
+            ctx.beginPath();
+            ctx.arc(x, y, 12, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        renderFeedback() {
+            this.feedback.forEach((item, index) => {
+                if (Date.now() - item.timestamp > 2000) {
+                    this.feedback.splice(index, 1);
+                } else {
+                    this.renderFeedbackItem(item);
+                }
+            });
+        }
+        
+        renderFeedbackItem(item) {
+            const ctx = this.ctx;
+            const opacity = 1 - ((Date.now() - item.timestamp) / 2000);
+            
+            ctx.save();
+            ctx.globalAlpha = opacity;
+            
+            if (item.type === 'correct') {
+                ctx.fillStyle = '#4CAF50';
+                ctx.font = 'bold 24px Arial';
+                ctx.fillText('✓', item.x, item.y);
+            } else if (item.type === 'incorrect') {
+                ctx.fillStyle = '#F44336';
+                ctx.font = 'bold 24px Arial';
+                ctx.fillText('✗', item.x, item.y);
+            }
+            
+            ctx.restore();
+        }
+        
+        showCorrectFeedback(note) {
+            const x = this.getNoteX(note);
+            const y = this.getNoteY(note) - 30;
+            
+            this.feedback.push({
+                type: 'correct',
+                x: x,
+                y: y,
                 timestamp: Date.now()
             });
+        }
+        
+        showIncorrectFeedback(expectedNote, playedNote) {
+            const x = this.getNoteX(expectedNote);
+            const y = this.getNoteY(expectedNote) - 30;
             
-            console.log('🎵 Recorded note:', midiNote);
+            this.feedback.push({
+                type: 'incorrect',
+                x: x,
+                y: y,
+                timestamp: Date.now()
+            });
         }
-
-        cleanup() {
-            console.log('🧹 Cleaning up Free Mode');
+        
+        showMissedFeedback(note) {
+            note.missed = true;
         }
-    }
-
-    /* =====================================================
-       STATS TRACKER
-       ===================================================== */
-
-    class StatsTracker {
-        constructor(engine) {
-            this.engine = engine;
+        
+        highlightNote(note) {
+            note.highlighted = true;
         }
-
-        initialize() {
-            console.log('📊 Initializing Stats Tracker...');
-            this.loadStats();
-            this.updateDisplay();
+        
+        clearFeedback() {
+            this.feedback = [];
         }
-
-        loadStats() {
-            // Load from localStorage or WordPress user meta
-            const saved = localStorage.getItem('srt_stats');
-            if (saved) {
-                const data = JSON.parse(saved);
-                Object.assign(this.engine.stats, data);
-            }
+        
+        setClef(clef) {
+            this.clef = clef;
         }
-
-        saveStats() {
-            localStorage.setItem('srt_stats', JSON.stringify(this.engine.stats));
+        
+        setKeySignature(key) {
+            this.keySignature = key;
         }
-
-        updateDisplay() {
-            const stats = this.engine.stats;
-
-            // Update header stats (match PHP IDs)
-            $('#srtHeaderHits').text(stats.hits);
-            $('#srtHeaderMisses').text(stats.misses);
-            $('#srtHeaderStreak').text(stats.streak);
-
-            const total = stats.hits + stats.misses;
-            const accuracy = total > 0 ? Math.round((stats.hits / total) * 100) : 100;
-            $('#srtHeaderAccuracy').text(accuracy + '%');
-
-            // Update stats panel (if present)
-            $('#srtStatNotesPlayed').text(total);
-            $('#srtStatAccuracy').text(accuracy + '%');
-            $('#srtStatStreak').text(stats.streak);
-            $('#srtStatBestStreak').text(stats.bestStreak);
+        
+        setTimeSignature(time) {
+            this.timeSignature = time;
+        }
+        
+        setNoteNameSystem(system) {
+            this.noteNameSystem = system;
         }
     }
-
-    /* =====================================================
-       UI CONTROLLER
-       ===================================================== */
-
-    class UIController {
-        constructor(engine) {
-            this.engine = engine;
-        }
-
-        initialize() {
-            console.log('🎨 Initializing UI Controller...');
-            this.attachEventListeners();
-        }
-
-        attachEventListeners() {
-            const self = this;
-            
-            // Let's Play button
-            $('#srtLetsPlayBtn').on('click', () => {
-                this.engine.start();
-            });
-            
-            // Play button
-            $('#srtPlayBtn').on('click', () => {
-                $('#srtPlayBtn').hide();
-                $('#srtPauseBtn').show();
-                if (this.engine.currentMode && this.engine.currentMode.start) {
-                    this.engine.currentMode.start();
-                }
-            });
-            
-            // Pause button
-            $('#srtPauseBtn').on('click', () => {
-                $('#srtPauseBtn').hide();
-                $('#srtPlayBtn').show();
-                if (this.engine.currentMode && this.engine.currentMode.stop) {
-                    this.engine.currentMode.stop();
-                }
-            });
-            
-            // Reset button
-            $('#srtResetBtn').on('click', () => {
-                this.engine.generateNewExercise();
-            });
-            
-            // Mode buttons
-            $('.srt-mode-btn').on('click', function() {
-                const mode = $(this).data('mode');
-                self.engine.setMode(mode);
-            });
-
-            // Difficulty select
-            $('#srtDifficultySelect').on('change', function() {
-                const difficulty = $(this).val();
-                console.log('🎯 Difficulty changed to:', difficulty);
-                self.engine.settings.difficulty = difficulty;
-                self.engine.generateNewExercise(); // Generate new exercise with new difficulty
-            });
-
-            // Settings panel
-            $('#srtSettingsBtn').on('click', () => {
-                $('#srtSettingsPanel').toggleClass('open');
-            });
-            
-            $('#srtSettingsPanelClose').on('click', () => {
-                $('#srtSettingsPanel').removeClass('open');
-            });
-            
-            // Stats panel
-            $('#srtStatsBtn').on('click', () => {
-                $('#srtStatsPanel').toggleClass('open');
-            });
-            
-            $('#srtStatsPanelClose').on('click', () => {
-                $('#srtStatsPanel').removeClass('open');
-            });
-            
-            // Tempo slider
-            $('#srtTempoSlider').on('input', function() {
-                const tempo = $(this).val();
-                $('#srtTempoValue').text(tempo + ' BPM');
-                self.engine.settings.tempo = parseInt(tempo);
-            });
-            
-            // Volume slider
-            $('#srtVolume').on('input', function() {
-                const volume = $(this).val();
-                $('#srtVolumeValue').text(volume + '%');
-                const volumeDecimal = volume / 100;
-                self.engine.settings.volume = volumeDecimal;
-                if (self.engine.audioEngine) {
-                    self.engine.audioEngine.setVolume(volumeDecimal);
-                }
-            });
-            
-            // MIDI input select
-            $('#srtMidiInput').on('change', function() {
-                const inputId = $(this).val();
-                if (inputId && self.engine.midiHandler) {
-                    self.engine.midiHandler.connectInput(inputId);
-                }
-            });
-            
-            // MIDI refresh button
-            $('#srtMidiRefresh').on('click', () => {
-                if (self.engine.midiHandler) {
-                    self.engine.midiHandler.refreshDevices();
-                }
-            });
-        }
-    }
-
-    /* =====================================================
-       GLOBAL INITIALIZATION
-       ===================================================== */
 
     // Initialize when document is ready
     $(document).ready(function() {
-        console.log('🎹 Document ready - Starting Sight Reading Training...');
+        console.log('🎹 PianoMode Sight Reading - Document Ready');
 
-        // DEBUG: Check if loading screen exists in DOM
-        const loadingScreen = document.getElementById('srtLoadingScreen');
+        // DEBUG: Check if elements exist
         const container = document.getElementById('sightReadingGame');
+        const loadingScreen = document.getElementById('srtLoadingScreen');
 
-        console.log('🔍 DEBUG - Container Element:', container);
-        console.log('🔍 DEBUG - Loading Screen Element:', loadingScreen);
+        console.log('🔍 DEBUG - Container #sightReadingGame:', container);
+        console.log('🔍 DEBUG - Loading Screen #srtLoadingScreen:', loadingScreen);
 
         if (!container) {
             console.error('❌❌❌ CRITICAL: Container #sightReadingGame NOT FOUND!');
-            console.error('❌ The shortcode [sightreading_game] is NOT rendering any HTML!');
-            console.error('❌ SOLUTION: Add the shortcode [sightreading_game] to your WordPress page!');
-            alert('ERREUR CRITIQUE: Le shortcode [sightreading_game] n\'est PAS sur la page WordPress!\n\nAjoutez le shortcode à votre page!');
+            console.error('❌ Le shortcode [sightreading_game] n\'est PAS sur la page!');
+            alert('ERREUR CRITIQUE: Le shortcode [sightreading_game] n\'est PAS sur la page WordPress!\n\nAjoutez [sightreading_game] à votre page!');
             return;
         }
 
         if (!loadingScreen) {
             console.error('❌❌❌ CRITICAL: Loading screen #srtLoadingScreen NOT FOUND!');
-            console.error('❌ The HTML structure is incomplete!');
+            console.error('❌ Structure HTML incomplète!');
             alert('ERREUR CRITIQUE: Structure HTML incomplète!');
             return;
         }
 
-        // Check computed styles of loading screen
+        // Check and log computed styles of loading screen
         const styles = window.getComputedStyle(loadingScreen);
-        console.log('🔍 Loading Screen Styles:');
+        console.log('🔍 Loading Screen Computed Styles:');
         console.log('  - display:', styles.display);
         console.log('  - visibility:', styles.visibility);
         console.log('  - opacity:', styles.opacity);
         console.log('  - z-index:', styles.zIndex);
         console.log('  - position:', styles.position);
-        console.log('  - top:', styles.top);
-        console.log('  - left:', styles.left);
-        console.log('  - right:', styles.right);
-        console.log('  - bottom:', styles.bottom);
         console.log('  - background:', styles.background);
+        console.log('  - width:', styles.width);
+        console.log('  - height:', styles.height);
 
-        // Force loading screen to be visible
-        if (styles.display === 'none' || styles.visibility === 'hidden' || styles.opacity === '0') {
+        // Force loading screen visibility if hidden
+        if (styles.display === 'none' || styles.visibility === 'hidden' || parseFloat(styles.opacity) < 0.5) {
             console.warn('⚠️ Loading screen était caché! Forcing visibility...');
-            loadingScreen.style.display = 'flex !important';
-            loadingScreen.style.visibility = 'visible !important';
-            loadingScreen.style.opacity = '1 !important';
+            loadingScreen.style.display = 'flex';
+            loadingScreen.style.visibility = 'visible';
+            loadingScreen.style.opacity = '1';
+            console.log('✅ Forced loading screen to be visible');
         }
 
-        console.log('✅ Loading screen should now be visible on the page!');
-
-        // Create global engine instance
-        window.srtEngine = new SightReadingEngine();
-
-        // Initialize engine
-        window.srtEngine.initialize();
+        console.log('✅ Initializing Sight Reading Engine with PACK_5 complete code...');
+        window.sightReadingEngine = new SightReadingEngine(container);
     });
 
 })(jQuery);
-
-console.log('✅ Sight Reading Engine loaded successfully');
