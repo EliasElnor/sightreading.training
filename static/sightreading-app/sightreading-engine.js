@@ -18,6 +18,9 @@
 (function($) {
     'use strict';
 
+    console.log('✅ SIGHTREADING ENGINE FILE LOADED - Version 2.5.0');
+    console.log('📦 If you see this, the JavaScript file is loading correctly!');
+
     /**
      * Main Sight Reading Engine Class
      */
