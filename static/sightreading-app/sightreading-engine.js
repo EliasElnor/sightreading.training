@@ -232,24 +232,29 @@
         setupCanvas() {
             this.canvas = document.getElementById('srtScoreCanvas');
             if (!this.canvas) {
-                console.error('Canvas element not found');
+                console.error('❌ Canvas element not found');
                 return;
             }
-            
+
+            console.log('🎨 Setting up canvas...');
             this.ctx = this.canvas.getContext('2d');
             this.resizeCanvas();
-            
+
             // Setup high DPI support
             const dpr = window.devicePixelRatio || 1;
             const rect = this.canvas.getBoundingClientRect();
-            
+
+            console.log(`📐 Canvas dimensions: ${rect.width}x${rect.height} (DPR: ${dpr})`);
+
             this.canvas.width = rect.width * dpr;
             this.canvas.height = rect.height * dpr;
             this.ctx.scale(dpr, dpr);
-            
+
             // Set canvas styles
             this.canvas.style.width = rect.width + 'px';
             this.canvas.style.height = rect.height + 'px';
+
+            console.log(`✅ Canvas setup complete: ${this.canvas.width}x${this.canvas.height}px`);
         }
         
         /**
@@ -323,12 +328,24 @@
             
             // Settings button
             $('#srtSettingsBtn').on('click', () => {
+                console.log('🔧 Settings button clicked');
                 this.toggleSettingsPanel();
             });
-            
+
             // Settings panel close
             $('#srtPanelClose').on('click', () => {
                 this.closeSettingsPanel();
+            });
+
+            // Stats button
+            $('#srtStatsBtn').on('click', () => {
+                console.log('📊 Stats button clicked');
+                this.toggleStatsPanel();
+            });
+
+            // Stats panel close
+            $('#srtStatsPanelClose').on('click', () => {
+                this.closeStatsPanel();
             });
             
             // Difficulty selector
@@ -485,14 +502,18 @@
          * Setup renderer
          */
         setupRenderer() {
+            console.log('🎼 Setting up renderer...');
             this.renderer = new StaffRenderer(this);
+            console.log('✅ Renderer created');
         }
         
         /**
          * Generate initial notes
          */
         generateInitialNotes() {
+            console.log('🎵 Generating initial notes...');
             this.notes = this.noteGenerator.generate();
+            console.log(`✅ Generated ${this.notes.length} notes:`, this.notes);
         }
         
         /**
@@ -637,26 +658,41 @@
          */
         render() {
             if (!this.ctx || !this.renderer) {
+                if (!this.renderErrorLogged) {
+                    console.error('❌ Cannot render: ctx or renderer missing', {
+                        ctx: !!this.ctx,
+                        renderer: !!this.renderer
+                    });
+                    this.renderErrorLogged = true;
+                }
                 return;
             }
-            
+
+            // Log first render only
+            if (!this.firstRenderLogged) {
+                console.log('🎨 First render call - Drawing staff and notes...');
+                console.log(`   Canvas: ${this.canvas.width}x${this.canvas.height}`);
+                console.log(`   Notes to render: ${this.notes.length}`);
+                this.firstRenderLogged = true;
+            }
+
             // Clear canvas
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            
+
             // Render staff
             this.renderer.renderStaff();
-            
+
             // Render notes
             this.renderer.renderNotes(this.notes);
-            
+
             // Render playhead (for scroll mode)
             if (this.mode === 'scroll') {
                 this.renderer.renderPlayhead(this.playheadPosition);
             }
-            
+
             // Render feedback layer
             this.renderer.renderFeedback();
-            
+
             // Render current note indicator (for wait mode)
             if (this.mode === 'wait' && this.currentNoteIndex < this.notes.length) {
                 this.renderer.renderCurrentNoteIndicator(this.notes[this.currentNoteIndex]);
@@ -1294,11 +1330,41 @@
         }
         
         toggleSettingsPanel() {
-            $('#srtSettingsPanel').toggleClass('open');
+            const $panel = $('#srtSettingsPanel');
+            const isOpen = $panel.hasClass('open');
+
+            if (isOpen) {
+                $panel.removeClass('open').css('display', 'none');
+                console.log('🔧 Settings panel closed');
+            } else {
+                // Close stats panel if open
+                this.closeStatsPanel();
+                $panel.addClass('open').css('display', 'block');
+                console.log('🔧 Settings panel opened');
+            }
         }
-        
+
         closeSettingsPanel() {
-            $('#srtSettingsPanel').removeClass('open');
+            $('#srtSettingsPanel').removeClass('open').css('display', 'none');
+        }
+
+        toggleStatsPanel() {
+            const $panel = $('#srtStatsPanel');
+            const isOpen = $panel.hasClass('open');
+
+            if (isOpen) {
+                $panel.removeClass('open').css('display', 'none');
+                console.log('📊 Stats panel closed');
+            } else {
+                // Close settings panel if open
+                this.closeSettingsPanel();
+                $panel.addClass('open').css('display', 'block');
+                console.log('📊 Stats panel opened');
+            }
+        }
+
+        closeStatsPanel() {
+            $('#srtStatsPanel').removeClass('open').css('display', 'none');
         }
         
         setDifficulty(difficulty) {
@@ -2196,54 +2262,47 @@
         }
         
         init() {
-            // Create audio context
-            this.context = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // Create master gain
-            this.masterGain = this.context.createGain();
-            this.masterGain.gain.value = 0.7;
-            
-            // Create separate gains for piano and metronome
-            this.pianoGain = this.context.createGain();
-            this.pianoGain.gain.value = 1;
-            this.pianoGain.connect(this.masterGain);
-            
-            this.metronomeGain = this.context.createGain();
-            this.metronomeGain.gain.value = 0.5;
-            this.metronomeGain.connect(this.masterGain);
-            
-            // Create compressor for overall dynamics
-            this.compressor = this.context.createDynamicsCompressor();
-            this.compressor.threshold.value = -24;
-            this.compressor.knee.value = 30;
-            this.compressor.ratio.value = 12;
-            this.compressor.attack.value = 0.003;
-            this.compressor.release.value = 0.25;
-            
-            this.masterGain.connect(this.compressor);
-            this.compressor.connect(this.context.destination);
-            
-            // Load default sounds
-            this.loadDefaultSounds();
-            
-            // Resume context on user interaction
-            document.addEventListener('click', () => {
-                if (this.context.state === 'suspended') {
-                    this.context.resume();
+            console.log('🔊 Initializing audio with Tone.js...');
+
+            // Check if Tone.js is available
+            if (typeof Tone === 'undefined') {
+                console.error('❌ Tone.js not loaded!');
+                return;
+            }
+
+            console.log('✅ Tone.js version:', Tone.version);
+
+            // Start Tone.js audio context
+            Tone.start().then(() => {
+                console.log('✅ Tone.js audio context started');
+            });
+
+            // Create Tone.js Sampler with simple sine waves for now
+            // In production, you would load actual piano samples
+            this.pianoSampler = new Tone.Sampler({
+                urls: {
+                    C4: "C4.mp3",
+                    "D#4": "Ds4.mp3",
+                    "F#4": "Fs4.mp3",
+                    A4: "A4.mp3",
+                },
+                release: 1,
+                baseUrl: "https://tonejs.github.io/audio/salamander/",
+                onload: () => {
+                    console.log('✅ Piano sampler loaded (Salamander Grand Piano)');
                 }
-            }, { once: true });
+            }).toDestination();
+
+            // Set volume
+            this.pianoSampler.volume.value = -10; // -10dB
+
+            console.log('✅ Audio initialization complete');
         }
         
         loadDefaultSounds() {
-            // Load UI sounds
-            this.loadSound('correct', '/assets/sounds/correct.mp3');
-            this.loadSound('incorrect', '/assets/sounds/incorrect.mp3');
-            this.loadSound('achievement', '/assets/sounds/achievement.mp3');
-            this.loadSound('start', '/assets/sounds/start.mp3');
-            
-            // Load metronome sounds
-            this.loadSound('tick', '/assets/sounds/tick.mp3');
-            this.loadSound('tock', '/assets/sounds/tock.mp3');
+            // Sound files disabled - using Tone.js for all audio
+            // TODO: Add sound files or use Tone.js to generate UI sounds
+            console.log('ℹ️ UI sounds disabled (files not available)');
         }
         
         async loadSound(name, url) {
@@ -2270,90 +2329,37 @@
         }
         
         playNote(midi, velocity = 127) {
-            // Convert MIDI to frequency
-            const frequency = 440 * Math.pow(2, (midi - 69) / 12);
-            
-            // Create oscillators for richer sound
-            const osc1 = this.context.createOscillator();
-            const osc2 = this.context.createOscillator();
-            const osc3 = this.context.createOscillator();
-            
-            osc1.type = 'sine';
-            osc2.type = 'sine';
-            osc3.type = 'sine';
-            
-            osc1.frequency.value = frequency;
-            osc2.frequency.value = frequency * 2; // First harmonic
-            osc3.frequency.value = frequency * 3; // Second harmonic
-            
-            // Create envelope
-            const envelope = this.context.createGain();
-            envelope.gain.value = 0;
-            
-            // Create individual gains for harmonics
-            const gain1 = this.context.createGain();
-            const gain2 = this.context.createGain();
-            const gain3 = this.context.createGain();
-            
-            gain1.gain.value = 1;
-            gain2.gain.value = 0.3;
-            gain3.gain.value = 0.15;
-            
-            // Connect oscillators
-            osc1.connect(gain1);
-            osc2.connect(gain2);
-            osc3.connect(gain3);
-            
-            gain1.connect(envelope);
-            gain2.connect(envelope);
-            gain3.connect(envelope);
-            
-            envelope.connect(this.pianoGain);
-            
-            // Apply velocity
-            const maxGain = (velocity / 127) * 0.3;
-            
-            // ADSR envelope
-            const now = this.context.currentTime;
-            const attack = 0.01;
-            const decay = 0.1;
-            const sustain = 0.7;
-            const release = 0.5;
-            
-            envelope.gain.setValueAtTime(0, now);
-            envelope.gain.linearRampToValueAtTime(maxGain, now + attack);
-            envelope.gain.linearRampToValueAtTime(maxGain * sustain, now + attack + decay);
-            
-            // Start oscillators
-            osc1.start(now);
-            osc2.start(now);
-            osc3.start(now);
-            
+            if (!this.pianoSampler) {
+                console.warn('⚠️ Piano sampler not initialized');
+                return;
+            }
+
+            // Convert MIDI number to note name (e.g., 60 -> "C4")
+            const noteName = Tone.Frequency(midi, "midi").toNote();
+
+            // Convert velocity to Tone.js velocity (0-1)
+            const toneVelocity = velocity / 127;
+
+            // Play the note with Tone.js
+            this.pianoSampler.triggerAttack(noteName, Tone.now(), toneVelocity);
+
             // Store for release
             this.activeSounds.set(midi, {
-                oscillators: [osc1, osc2, osc3],
-                envelope: envelope,
-                startTime: now
+                noteName: noteName,
+                startTime: Tone.now()
             });
         }
         
         releaseNote(midi) {
             const sound = this.activeSounds.get(midi);
-            if (!sound) {
+            if (!sound || !this.pianoSampler) {
                 return;
             }
-            
-            const now = this.context.currentTime;
-            const release = 0.5;
-            
-            sound.envelope.gain.cancelScheduledValues(now);
-            sound.envelope.gain.setValueAtTime(sound.envelope.gain.value, now);
-            sound.envelope.gain.linearRampToValueAtTime(0, now + release);
-            
-            sound.oscillators.forEach(osc => {
-                osc.stop(now + release);
-            });
-            
+
+            // Release the note with Tone.js
+            this.pianoSampler.triggerRelease(sound.noteName, Tone.now());
+
+            // Clean up
             this.activeSounds.delete(midi);
         }
         
@@ -2590,17 +2596,22 @@
         }
         
         renderStaff() {
+            if (!this.staffRenderLogged) {
+                console.log('📝 Rendering staff (clef:', this.clef, ')');
+                this.staffRenderLogged = true;
+            }
+
             const ctx = this.ctx;
             const width = this.canvas.width / (window.devicePixelRatio || 1);
             const height = this.canvas.height / (window.devicePixelRatio || 1);
-            
+
             ctx.save();
-            
+
             // Set styles
             ctx.strokeStyle = '#333';
             ctx.lineWidth = 1;
             ctx.font = '20px Arial';
-            
+
             // Render based on clef setting
             if (this.clef === 'grand') {
                 this.renderGrandStaff();
@@ -2609,7 +2620,7 @@
             } else {
                 this.renderTrebleStaff();
             }
-            
+
             ctx.restore();
         }
         
