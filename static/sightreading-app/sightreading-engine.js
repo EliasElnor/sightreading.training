@@ -3129,6 +3129,25 @@
         const loadingScreen = document.getElementById('srtLoadingScreen');
 
         console.log('🔍 DEBUG - Container #sightReadingGame:', container);
+
+        // DEBUG: Show container HTML content
+        if (container) {
+            console.log('📄 Container HTML (first 500 chars):', container.innerHTML.substring(0, 500));
+            console.log('📄 Container children count:', container.children.length);
+            console.log('📄 Container first child:', container.children[0]);
+
+            // Try to find loading screen by class
+            const loadingByClass = container.querySelector('.srt-loading-screen');
+            console.log('🔍 Loading screen by class (.srt-loading-screen):', loadingByClass);
+
+            // Check all children
+            console.log('📋 All container children:');
+            for (let i = 0; i < container.children.length; i++) {
+                const child = container.children[i];
+                console.log(`  Child ${i}:`, child.tagName, child.id, child.className);
+            }
+        }
+
         console.log('🔍 DEBUG - Loading Screen #srtLoadingScreen:', loadingScreen);
 
         if (!container) {
@@ -3140,30 +3159,43 @@
 
         if (!loadingScreen) {
             console.error('❌❌❌ CRITICAL: Loading screen #srtLoadingScreen NOT FOUND!');
-            console.error('❌ Structure HTML incomplète!');
-            alert('ERREUR CRITIQUE: Structure HTML incomplète!');
-            return;
-        }
+            console.error('❌ WordPress a peut-être supprimé le HTML du loading screen!');
+            console.error('❌ Vérifiez que le PHP render_shortcode() génère bien tout le HTML!');
 
-        // Check and log computed styles of loading screen
-        const styles = window.getComputedStyle(loadingScreen);
-        console.log('🔍 Loading Screen Computed Styles:');
-        console.log('  - display:', styles.display);
-        console.log('  - visibility:', styles.visibility);
-        console.log('  - opacity:', styles.opacity);
-        console.log('  - z-index:', styles.zIndex);
-        console.log('  - position:', styles.position);
-        console.log('  - background:', styles.background);
-        console.log('  - width:', styles.width);
-        console.log('  - height:', styles.height);
+            // Try to recreate it
+            console.warn('⚠️ Tentative de recréation du loading screen...');
+            const loadingHTML = `
+                <div class="srt-loading-screen" id="srtLoadingScreen" style="position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100vw !important; height: 100vh !important; background: linear-gradient(135deg, #0B0B0B 0%, #1A1A1A 100%) !important; display: flex !important; align-items: center !important; justify-content: center !important; z-index: 999999 !important; visibility: visible !important; opacity: 1 !important;">
+                    <div class="srt-loader" style="text-align: center; max-width: 700px; padding: 40px; background: rgba(11, 11, 11, 0.95); border-radius: 20px; box-shadow: 0 10px 50px rgba(0,0,0,0.8);">
+                        <div class="srt-loader-logo" style="margin: 0 auto 30px; text-align: center;">
+                            <img src="https://pianomode.com/wp-content/uploads/2025/11/cropped-ChatGPT-Image-Nov-10-2025-01_18_37-AM.png" alt="PianoMode" style="max-width: 200px; height: auto;">
+                        </div>
+                        <div class="srt-loader-text" style="color: #FFFFFF; font-size: 24px; font-weight: 500;">Loading PianoMode Sight Reading...</div>
+                        <div class="srt-loader-progress" style="width: 500px; height: 16px; background: #333; border-radius: 10px; overflow: hidden; margin: 30px auto; border: 2px solid #444;">
+                            <div class="srt-loader-bar" id="srtLoadingBar" style="height: 100%; background: linear-gradient(90deg, #B08A2E, #C59D3A, #D4A942); width: 0%; transition: width 0.5s ease-out; border-radius: 10px;"></div>
+                        </div>
+                        <div class="srt-loader-percentage" id="srtLoadingPercentage" style="color: #C59D3A; font-size: 56px !important; font-weight: 900 !important; text-align: center; margin: 30px 0;">0%</div>
+                        <div class="srt-loader-tips" id="srtLoadingTips" style="color: #D4A942; font-size: 20px !important; text-align: center; margin: 30px 0;">
+                            <p style="margin: 0;">💡 Loading application...</p>
+                        </div>
+                        <button class="srt-btn srt-lets-play-btn" id="srtLetsPlayBtn" style="display: none; margin-top: 40px; padding: 24px 80px !important; font-size: 36px !important; font-weight: 900 !important; background: linear-gradient(135deg, #C59D3A 0%, #D4A942 100%) !important; color: #0B0B0B !important; border: 4px solid #D4A942 !important; border-radius: 16px !important; cursor: pointer !important; text-transform: uppercase !important; min-width: 400px !important;">Let's Play!</button>
+                    </div>
+                </div>
+            `;
 
-        // Force loading screen visibility if hidden
-        if (styles.display === 'none' || styles.visibility === 'hidden' || parseFloat(styles.opacity) < 0.5) {
-            console.warn('⚠️ Loading screen était caché! Forcing visibility...');
-            loadingScreen.style.display = 'flex';
-            loadingScreen.style.visibility = 'visible';
-            loadingScreen.style.opacity = '1';
-            console.log('✅ Forced loading screen to be visible');
+            // Insert at beginning of container
+            container.insertAdjacentHTML('afterbegin', loadingHTML);
+            console.log('✅ Loading screen HTML injecté dans le container');
+
+            // Try to get it again
+            const newLoadingScreen = document.getElementById('srtLoadingScreen');
+            if (newLoadingScreen) {
+                console.log('✅ Loading screen trouvé après injection!');
+            } else {
+                console.error('❌ Impossible de créer le loading screen!');
+                alert('ERREUR CRITIQUE: Impossible de créer l\'écran de chargement!\n\nLe PHP ne génère pas le bon HTML.');
+                return;
+            }
         }
 
         console.log('✅ Initializing Sight Reading Engine with PACK_5 complete code...');
