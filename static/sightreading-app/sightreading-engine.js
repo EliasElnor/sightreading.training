@@ -209,7 +209,7 @@
                 mode: CONFIG.MODES.WAIT,
                 tempo: CONFIG.TEMPO.DEFAULT,
                 volume: CONFIG.AUDIO.DEFAULT_VOLUME,
-                difficulty: 'beginner',
+                difficulty: 'elementary', // Match PHP default
                 generator: 'random',
                 keySignature: 'C',
                 clef: 'grand',
@@ -321,18 +321,25 @@
 
             console.log('🚀 Starting Sight Reading Training...');
 
-            // Hide loading screen - CORRECTED IDs to match PHP
+            // Hide loading screen and show interface - CORRECTED IDs to match PHP
             $('#srtLoadingScreen').fadeOut(500, () => {
-                $('#srtHeader').show();
-                $('#srtToolbar').show();
-                $('#srtMainArea').show();
+                console.log('💫 Loading screen hidden, showing interface...');
+                $('#srtHeader').fadeIn(300);
+                $('#srtToolbar').fadeIn(300);
+                $('#srtMainArea').fadeIn(300, () => {
+                    console.log('✅ Interface is now visible');
+
+                    // Initialize current mode and generate exercise AFTER interface is visible
+                    try {
+                        this.setMode(this.settings.mode);
+                        this.generateNewExercise();
+                        console.log('✅ Exercise generated and ready');
+                    } catch (error) {
+                        console.error('❌ Error setting mode or generating exercise:', error);
+                        this.showError('Failed to generate exercise: ' + error.message);
+                    }
+                });
             });
-
-            // Initialize current mode
-            this.setMode(this.settings.mode);
-
-            // Generate initial exercise
-            this.generateNewExercise();
         }
 
         setMode(mode) {
@@ -386,21 +393,167 @@
         }
 
         generateNotes() {
-            // This will be replaced by actual generator from sightreading-chord-generators.js
-            // For now, generate simple random notes
-            const notes = [];
-            const numNotes = 16; // 4 measures
-            
-            for (let i = 0; i < numNotes; i++) {
-                const midi = 60 + Math.floor(Math.random() * 13); // C4 to C5
-                notes.push({
-                    midi: midi,
-                    duration: 1, // Quarter note
-                    type: 'note',
-                    x: i * 60 + 100 // Position on canvas
-                });
+            console.log('🎼 Generating notes for difficulty:', this.settings.difficulty);
+
+            // Get difficulty settings from WordPress config if available
+            const difficultyConfig = window.srtConfig?.difficulties?.[this.settings.difficulty];
+
+            if (!difficultyConfig) {
+                console.warn('⚠️ No difficulty config found, using defaults');
             }
-            
+
+            // Generate notes based on difficulty
+            return this.createExerciseForDifficulty(this.settings.difficulty, difficultyConfig);
+        }
+
+        createExerciseForDifficulty(difficulty, config) {
+            const notes = [];
+            const numMeasures = 4;
+            const beatsPerMeasure = 4;
+            const totalBeats = numMeasures * beatsPerMeasure;
+
+            let currentBeat = 0;
+            let xPosition = 150; // Start position on canvas
+            const beatWidth = 60; // Pixels per beat
+
+            // Define note ranges for each difficulty
+            const ranges = {
+                'beginner': { min: 60, max: 67 }, // C4 to G4 (5 white notes)
+                'elementary': { min: 57, max: 72 }, // A3 to C5
+                'intermediate': { min: 48, max: 79 }, // C3 to G5
+                'advanced': { min: 36, max: 84 }, // C2 to C6
+                'expert': { min: 21, max: 108 } // Full 88 keys
+            };
+
+            const range = ranges[difficulty] || ranges['beginner'];
+
+            // Beginner: Simple quarter notes, stepwise motion
+            if (difficulty === 'beginner') {
+                let currentMidi = 60; // Start on C4 (middle C)
+
+                for (let i = 0; i < totalBeats; i++) {
+                    // Stepwise motion (mostly) with occasional repeated notes
+                    const movement = Math.random() < 0.3 ? 0 : (Math.random() < 0.5 ? 2 : -2);
+                    currentMidi = Math.max(range.min, Math.min(range.max, currentMidi + movement));
+
+                    notes.push({
+                        midi: currentMidi,
+                        duration: 1, // Quarter note
+                        type: 'note',
+                        x: xPosition,
+                        beat: currentBeat
+                    });
+
+                    currentBeat += 1;
+                    xPosition += beatWidth;
+                }
+            }
+            // Elementary: Quarter and half notes, wider range
+            else if (difficulty === 'elementary') {
+                let currentMidi = 60;
+
+                while (currentBeat < totalBeats) {
+                    // Mix of quarter and half notes
+                    const duration = Math.random() < 0.7 ? 1 : 2;
+
+                    // Stepwise or small jumps
+                    const movement = Math.random() < 0.2 ? 0 :
+                                   (Math.random() < 0.7 ? (Math.random() < 0.5 ? 2 : -2) :
+                                   (Math.random() < 0.5 ? 4 : -4));
+                    currentMidi = Math.max(range.min, Math.min(range.max, currentMidi + movement));
+
+                    notes.push({
+                        midi: currentMidi,
+                        duration: duration,
+                        type: 'note',
+                        x: xPosition,
+                        beat: currentBeat
+                    });
+
+                    currentBeat += duration;
+                    xPosition += beatWidth * duration;
+                }
+            }
+            // Intermediate: Add eighth notes and simple chords
+            else if (difficulty === 'intermediate') {
+                let currentMidi = 60;
+
+                while (currentBeat < totalBeats) {
+                    // Mix of durations
+                    const rand = Math.random();
+                    const duration = rand < 0.5 ? 1 : (rand < 0.7 ? 2 : 0.5);
+
+                    // Occasionally add a chord (2 notes)
+                    if (Math.random() < 0.2) {
+                        const bass = Math.floor(Math.random() * (range.max - range.min)) + range.min;
+                        const treble = bass + (Math.random() < 0.5 ? 3 : 4); // Third or fourth
+
+                        notes.push({
+                            midi: [bass, treble],
+                            duration: duration,
+                            type: 'chord',
+                            x: xPosition,
+                            beat: currentBeat
+                        });
+                    } else {
+                        // Larger jumps allowed
+                        const movement = Math.floor(Math.random() * 13) - 6;
+                        currentMidi = Math.max(range.min, Math.min(range.max, currentMidi + movement));
+
+                        notes.push({
+                            midi: currentMidi,
+                            duration: duration,
+                            type: 'note',
+                            x: xPosition,
+                            beat: currentBeat
+                        });
+                    }
+
+                    currentBeat += duration;
+                    xPosition += beatWidth * duration;
+                }
+            }
+            // Advanced & Expert: Complex rhythms and full chords
+            else {
+                while (currentBeat < totalBeats) {
+                    const rand = Math.random();
+                    const duration = rand < 0.3 ? 0.5 : (rand < 0.6 ? 1 : (rand < 0.8 ? 2 : 0.25));
+
+                    // More frequent chords
+                    if (Math.random() < 0.4) {
+                        const numNotes = difficulty === 'expert' ? (Math.random() < 0.5 ? 2 : 3) : 2;
+                        const chordNotes = [];
+                        const root = Math.floor(Math.random() * (range.max - range.min - 8)) + range.min;
+
+                        for (let i = 0; i < numNotes; i++) {
+                            chordNotes.push(root + (i * (Math.random() < 0.5 ? 3 : 4)));
+                        }
+
+                        notes.push({
+                            midi: chordNotes,
+                            duration: duration,
+                            type: 'chord',
+                            x: xPosition,
+                            beat: currentBeat
+                        });
+                    } else {
+                        const midi = Math.floor(Math.random() * (range.max - range.min)) + range.min;
+
+                        notes.push({
+                            midi: midi,
+                            duration: duration,
+                            type: 'note',
+                            x: xPosition,
+                            beat: currentBeat
+                        });
+                    }
+
+                    currentBeat += duration;
+                    xPosition += beatWidth * duration;
+                }
+            }
+
+            console.log(`✅ Generated ${notes.length} notes for ${difficulty} level`);
             return notes;
         }
 
@@ -829,34 +982,40 @@
         }
 
         drawNote(note) {
-            const position = MIDI_TO_STAFF_POSITION[note.midi];
-            if (!position) return;
-            
+            // Handle both single notes and chords
+            const midiNotes = Array.isArray(note.midi) ? note.midi : [note.midi];
             const ctx = this.ctx;
             const x = note.x || 100;
-            const baseY = position.staff === 'treble' ? 20 : (20 + CONFIG.STAFF.HEIGHT + 20);
-            const y = baseY + position.line * (CONFIG.STAFF.LINE_SPACING / 2);
-            
-            // Draw note head
-            ctx.fillStyle = '#000000';
-            ctx.beginPath();
-            ctx.ellipse(x, y, 6, 4, 0, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Draw stem
-            if (note.duration < 4) { // Not whole note
-                ctx.strokeStyle = '#000000';
-                ctx.lineWidth = 1.5;
+
+            // Draw each note in the chord
+            midiNotes.forEach((midi, index) => {
+                const position = MIDI_TO_STAFF_POSITION[midi];
+                if (!position) return;
+
+                const baseY = position.staff === 'treble' ? 20 : (20 + CONFIG.STAFF.HEIGHT + 20);
+                const y = baseY + position.line * (CONFIG.STAFF.LINE_SPACING / 2);
+
+                // Draw note head
+                ctx.fillStyle = '#000000';
                 ctx.beginPath();
-                ctx.moveTo(x + 6, y);
-                ctx.lineTo(x + 6, y - 30);
-                ctx.stroke();
-            }
-            
-            // Draw ledger lines if needed
-            if (position.ledgerLines > 0) {
-                this.drawLedgerLines(x, y, position.ledgerLines, position.staff);
-            }
+                ctx.ellipse(x, y, 6, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw stem only once for chords (from the outermost note)
+                if (index === 0 && note.duration < 4) { // Not whole note
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(x + 6, y);
+                    ctx.lineTo(x + 6, y - 30);
+                    ctx.stroke();
+                }
+
+                // Draw ledger lines if needed
+                if (position.ledgerLines > 0) {
+                    this.drawLedgerLines(x, y, position.ledgerLines, position.staff);
+                }
+            });
         }
 
         drawLedgerLines(x, y, count, staff) {
@@ -1032,35 +1191,54 @@
 
         handleNoteInput(midiNote) {
             if (this.currentIndex >= this.notes.length) return;
-            
+
             const expectedNote = this.notes[this.currentIndex];
-            
-            if (midiNote === expectedNote.midi) {
+            const expectedMidi = Array.isArray(expectedNote.midi) ? expectedNote.midi : [expectedNote.midi];
+
+            // Check if the played note is one of the expected notes (for chords)
+            const isCorrect = expectedMidi.includes(midiNote);
+
+            if (isCorrect) {
                 // Correct note!
                 console.log('✅ Correct note!');
-                this.engine.stats.hits++;
-                this.engine.stats.streak++;
-                this.engine.stats.bestStreak = Math.max(this.engine.stats.bestStreak, this.engine.stats.streak);
-                
+
                 // Visual feedback
                 this.engine.virtualPiano.highlightKey(midiNote, 'correct');
-                
-                // Move to next note
-                this.currentIndex++;
-                
-                if (this.currentIndex >= this.notes.length) {
-                    console.log('🎉 Exercise complete!');
+
+                // For chords, check if all notes have been played
+                if (!this.playedNotes) {
+                    this.playedNotes = new Set();
+                }
+                this.playedNotes.add(midiNote);
+
+                // If all notes in chord are played, move to next
+                if (this.playedNotes.size >= expectedMidi.length) {
+                    this.engine.stats.hits++;
+                    this.engine.stats.streak++;
+                    this.engine.stats.bestStreak = Math.max(this.engine.stats.bestStreak, this.engine.stats.streak);
+
+                    // Move to next note
+                    this.currentIndex++;
+                    this.playedNotes = new Set(); // Reset for next chord
+
+                    if (this.currentIndex >= this.notes.length) {
+                        console.log('🎉 Exercise complete!');
+                        this.engine.generateNewExercise(); // Auto-generate new exercise
+                    }
                 }
             } else {
                 // Wrong note
                 console.log('❌ Wrong note');
                 this.engine.stats.misses++;
                 this.engine.stats.streak = 0;
-                
+
                 // Visual feedback
                 this.engine.virtualPiano.highlightKey(midiNote, 'error');
+
+                // Reset played notes for chord
+                this.playedNotes = new Set();
             }
-            
+
             // Update stats display
             this.engine.statsTracker.updateDisplay();
         }
@@ -1180,20 +1358,21 @@
 
         updateDisplay() {
             const stats = this.engine.stats;
-            
-            $('#srtHitsValue').text(stats.hits);
-            $('#srtMissesValue').text(stats.misses);
-            $('#srtStreakValue').text(stats.streak);
-            
+
+            // Update header stats (match PHP IDs)
+            $('#srtHeaderHits').text(stats.hits);
+            $('#srtHeaderMisses').text(stats.misses);
+            $('#srtHeaderStreak').text(stats.streak);
+
             const total = stats.hits + stats.misses;
             const accuracy = total > 0 ? Math.round((stats.hits / total) * 100) : 100;
-            $('#srtAccuracyValue').text(accuracy + '%');
-            
-            // Update stats panel
-            $('#srtNotesPlayed').text(total);
-            $('#srtAccuracyStat').text(accuracy + '%');
-            $('#srtCurrentStreak').text(stats.streak);
-            $('#srtBestStreak').text(stats.bestStreak);
+            $('#srtHeaderAccuracy').text(accuracy + '%');
+
+            // Update stats panel (if present)
+            $('#srtStatNotesPlayed').text(total);
+            $('#srtStatAccuracy').text(accuracy + '%');
+            $('#srtStatStreak').text(stats.streak);
+            $('#srtStatBestStreak').text(stats.bestStreak);
         }
     }
 
@@ -1247,7 +1426,15 @@
                 const mode = $(this).data('mode');
                 self.engine.setMode(mode);
             });
-            
+
+            // Difficulty select
+            $('#srtDifficultySelect').on('change', function() {
+                const difficulty = $(this).val();
+                console.log('🎯 Difficulty changed to:', difficulty);
+                self.engine.settings.difficulty = difficulty;
+                self.engine.generateNewExercise(); // Generate new exercise with new difficulty
+            });
+
             // Settings panel
             $('#srtSettingsBtn').on('click', () => {
                 $('#srtSettingsPanel').toggleClass('open');
