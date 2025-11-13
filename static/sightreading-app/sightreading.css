@@ -122,6 +122,25 @@
    RESET & BASE STYLES
    ===================================================== */
 
+/* Override WordPress theme body background */
+body.page .srt-container,
+body.single .srt-container,
+body .srt-container {
+    background: #0B0B0B !important;
+}
+
+/* Ensure no white space around the container */
+.srt-container:before,
+.srt-container:after {
+    content: '';
+    display: block;
+    position: absolute;
+    background: #0B0B0B;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+}
+
 .srt-container * {
     margin: 0;
     padding: 0;
@@ -143,9 +162,14 @@
 
 /* Full width container breaking out of theme wrapper */
 .srt-container {
-    width: 100vw;
-    margin-left: calc(-50vw + 50%);
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    margin-left: calc(-50vw + 50%) !important;
     position: relative;
+    left: 0 !important;
+    right: 0 !important;
+    padding: 0 !important;
 }
 
 /* =====================================================
@@ -168,6 +192,11 @@
 
 .srt-loader {
     text-align: center;
+    max-width: 600px;
+    padding: var(--srt-spacing-2xl);
+    background: rgba(11, 11, 11, 0.9);
+    border-radius: var(--srt-radius-xl);
+    box-shadow: var(--srt-shadow-2xl);
 }
 
 .srt-loader-note {
@@ -210,28 +239,31 @@
 }
 
 .srt-loader-progress {
-    width: 300px;
-    height: 8px;
+    width: 400px;
+    height: 12px;
     background: var(--srt-gray-800);
     border-radius: var(--srt-radius-full);
     overflow: hidden;
-    margin: var(--srt-spacing-lg) auto;
+    margin: var(--srt-spacing-xl) auto;
+    border: 2px solid var(--srt-gray-700);
 }
 
 .srt-loader-bar {
     height: 100%;
     background: linear-gradient(90deg, var(--srt-gold-dark), var(--srt-gold), var(--srt-gold-light));
     width: 0%;
-    transition: width 0.3s ease-out;
+    transition: width 0.5s ease-out;
     border-radius: var(--srt-radius-full);
+    box-shadow: 0 0 20px rgba(197, 157, 58, 0.6);
 }
 
 .srt-loader-percentage {
     color: var(--srt-gold);
-    font-size: var(--srt-font-size-xl);
-    font-weight: var(--srt-font-weight-bold);
+    font-size: var(--srt-font-size-3xl);
+    font-weight: var(--srt-font-weight-black);
     text-align: center;
-    margin: var(--srt-spacing-md) 0;
+    margin: var(--srt-spacing-lg) 0;
+    text-shadow: 0 2px 10px rgba(197, 157, 58, 0.5);
 }
 
 .srt-loader-tips {
@@ -243,11 +275,26 @@
 }
 
 .srt-lets-play-btn {
-    margin-top: var(--srt-spacing-xl);
-    padding: var(--srt-spacing-md) var(--srt-spacing-2xl);
-    font-size: var(--srt-font-size-lg);
-    font-weight: var(--srt-font-weight-bold);
+    margin-top: var(--srt-spacing-2xl);
+    padding: var(--srt-spacing-lg) var(--srt-spacing-3xl);
+    font-size: var(--srt-font-size-2xl);
+    font-weight: var(--srt-font-weight-black);
+    background: var(--srt-gold) !important;
+    color: var(--srt-black) !important;
+    border: 3px solid var(--srt-gold-light) !important;
+    border-radius: var(--srt-radius-xl);
+    box-shadow: 0 8px 24px rgba(197, 157, 58, 0.5);
+    cursor: pointer;
+    transition: all 0.3s ease;
     animation: pulse 2s ease-in-out infinite;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.srt-lets-play-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 32px rgba(197, 157, 58, 0.7);
+    background: var(--srt-gold-light) !important;
 }
 
 @keyframes pulse {
