@@ -342,6 +342,35 @@ class PianoMode_SightReading_Game {
         <!-- Main Sight Reading Container -->
         <div id="sightReadingGame" class="srt-container" data-config='<?php echo json_encode($atts); ?>'>
 
+            <!-- DIAGNOSTIC SCRIPT - Runs BEFORE WordPress enqueue -->
+            <script>
+                console.log('🔍 DIAGNOSTIC: Starting pre-enqueue checks...');
+                console.log('🔍 jQuery available?', typeof jQuery !== 'undefined' ? '✅ YES' : '❌ NO');
+                console.log('🔍 $ available?', typeof $ !== 'undefined' ? '✅ YES' : '❌ NO');
+                console.log('🔍 Tone available?', typeof Tone !== 'undefined' ? '✅ YES' : '❌ NO');
+                console.log('🔍 Chart available?', typeof Chart !== 'undefined' ? '✅ YES' : '❌ NO');
+                console.log('🔍 Container element exists?', document.getElementById('sightReadingGame') ? '✅ YES' : '❌ NO');
+
+                // Check for script tags after page loads
+                window.addEventListener('load', function() {
+                    console.log('🔍 DIAGNOSTIC: Page fully loaded, checking scripts...');
+                    const scripts = Array.from(document.getElementsByTagName('script'));
+                    const engineScript = scripts.find(s => s.src && s.src.includes('sightreading-engine.js'));
+                    const chordScript = scripts.find(s => s.src && s.src.includes('sightreading-chord-generators.js'));
+                    const songsScript = scripts.find(s => s.src && s.src.includes('sightreading-songs.js'));
+
+                    console.log('🔍 sightreading-engine.js found in DOM?', engineScript ? '✅ YES: ' + engineScript.src : '❌ NO');
+                    console.log('🔍 chord-generators.js found in DOM?', chordScript ? '✅ YES: ' + chordScript.src : '❌ NO');
+                    console.log('🔍 songs.js found in DOM?', songsScript ? '✅ YES: ' + songsScript.src : '❌ NO');
+
+                    if (engineScript) {
+                        console.log('🔍 Engine script loaded?', engineScript.readyState === 'loaded' || engineScript.readyState === 'complete' ? '✅ YES' : '⏳ Loading...');
+                    }
+
+                    console.log('🔍 window.sightReadingEngine exists?', typeof window.sightReadingEngine !== 'undefined' ? '✅ YES' : '❌ NO');
+                });
+            </script>
+
             <!-- Loading Screen with Progress Bar and Let's Play Button -->
             <div class="srt-loading-screen" id="srtLoadingScreen" style="position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100vw !important; height: 100vh !important; background: linear-gradient(135deg, #0B0B0B 0%, #1A1A1A 100%) !important; display: flex !important; align-items: center !important; justify-content: center !important; z-index: 999999 !important; visibility: visible !important; opacity: 1 !important;">
                 <div class="srt-loader" style="text-align: center; max-width: 700px; padding: 40px; background: rgba(11, 11, 11, 0.95); border-radius: 20px; box-shadow: 0 10px 50px rgba(0,0,0,0.8);">
@@ -797,6 +826,65 @@ class PianoMode_SightReading_Game {
                 <p>Sight Reading Training works best in landscape orientation.</p>
             </div>
         </div>
+
+        <!-- FALLBACK SCRIPT LOADER - Runs after all WordPress scripts should have loaded -->
+        <script>
+            (function() {
+                console.log('🔍 FALLBACK: Checking if engine loaded via WordPress enqueue...');
+
+                // Wait for DOM to be fully ready
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', checkAndLoadEngine);
+                } else {
+                    checkAndLoadEngine();
+                }
+
+                function checkAndLoadEngine() {
+                    // Give WordPress enqueue a moment to load scripts
+                    setTimeout(function() {
+                        console.log('🔍 FALLBACK: Checking window.sightReadingEngine...');
+                        console.log('🔍 Engine loaded?', typeof window.sightReadingEngine !== 'undefined' ? '✅ YES' : '❌ NO');
+                        console.log('🔍 jQuery loaded?', typeof jQuery !== 'undefined' ? '✅ YES' : '❌ NO');
+                        console.log('🔍 Tone loaded?', typeof Tone !== 'undefined' ? '✅ YES' : '❌ NO');
+
+                        // Check if WordPress successfully loaded the engine script
+                        const engineScript = Array.from(document.getElementsByTagName('script'))
+                            .find(s => s.src && s.src.includes('sightreading-engine.js'));
+
+                        if (!engineScript) {
+                            console.error('❌ CRITICAL: sightreading-engine.js script tag NOT FOUND in DOM!');
+                            console.error('❌ WordPress wp_enqueue_script() failed to add the script tag');
+                            console.error('❌ Possible causes:');
+                            console.error('  1. File not in theme directory: (theme)/assets/Sightreading-game/');
+                            console.error('  2. WordPress cache blocking new version');
+                            console.error('  3. Dependency missing (jQuery, Chart.js, etc.)');
+                            console.error('  4. PHP enqueue function not executing');
+
+                            // Try to manually load it as last resort
+                            console.warn('🚨 Attempting manual script injection...');
+                            const script = document.createElement('script');
+                            script.src = '<?php echo get_stylesheet_directory_uri(); ?>/assets/Sightreading-game/sightreading-engine.js?v=' + Date.now();
+                            script.onerror = function() {
+                                console.error('❌ MANUAL LOAD FAILED! File does not exist at path!');
+                                alert('CRITICAL ERROR: JavaScript file not found!\n\nPlease copy sightreading-engine.js to:\n' + script.src);
+                            };
+                            script.onload = function() {
+                                console.log('✅ MANUAL LOAD SUCCESS! Engine script loaded');
+                            };
+                            document.body.appendChild(script);
+                        } else {
+                            console.log('✅ Engine script tag found in DOM:', engineScript.src);
+
+                            // Check if it actually loaded
+                            if (typeof window.sightReadingEngine === 'undefined') {
+                                console.error('❌ Script tag exists but engine didn\'t initialize!');
+                                console.error('❌ Possible JavaScript error in file - check console for errors');
+                            }
+                        }
+                    }, 2000); // Wait 2 seconds for WordPress to load all scripts
+                }
+            })();
+        </script>
 
         <?php
     }
