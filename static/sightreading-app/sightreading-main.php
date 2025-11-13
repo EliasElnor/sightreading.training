@@ -28,7 +28,7 @@ if (!defined('ABSPATH')) {
 
 class PianoMode_SightReading_Game {
 
-    private $version = '2.0.2';
+    private $version = '2.0.3';
     private $assets_loaded = false;
 
     // PianoMode color palette EXACTE
@@ -346,7 +346,7 @@ class PianoMode_SightReading_Game {
             <div class="srt-loading-screen" id="srtLoadingScreen">
                 <div class="srt-loader">
                     <div class="srt-loader-logo">
-                        <img src="https://pianomode.com/wp-content/uploads/2025/05/Logo-def_NOIR.png" alt="PianoMode" class="srt-logo-img">
+                        <img src="https://pianomode.com/wp-content/uploads/2025/11/cropped-ChatGPT-Image-Nov-10-2025-01_18_37-AM.png" alt="PianoMode" class="srt-logo-img">
                     </div>
                     <div class="srt-loader-text">Loading PianoMode Sight Reading...</div>
                     <div class="srt-loader-progress">

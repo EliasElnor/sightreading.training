@@ -133,7 +133,7 @@
     font-size: var(--srt-font-size-base);
     line-height: 1.5;
     color: var(--srt-white);
-    background: var(--srt-black);
+    background: var(--srt-black) !important;
     min-height: 100vh;
     position: relative;
     overflow-x: hidden;
@@ -162,7 +162,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: var(--srt-z-loading);
+    z-index: 999999 !important;
     animation: fadeIn 0.3s ease-out;
 }
 
@@ -196,6 +196,58 @@
     font-size: var(--srt-font-size-lg);
     font-weight: var(--srt-font-weight-medium);
     letter-spacing: 0.5px;
+    margin-bottom: var(--srt-spacing-lg);
+}
+
+.srt-loader-logo {
+    margin: 0 auto var(--srt-spacing-xl);
+    text-align: center;
+}
+
+.srt-loader-logo img {
+    max-width: 200px;
+    height: auto;
+}
+
+.srt-loader-progress {
+    width: 300px;
+    height: 8px;
+    background: var(--srt-gray-800);
+    border-radius: var(--srt-radius-full);
+    overflow: hidden;
+    margin: var(--srt-spacing-lg) auto;
+}
+
+.srt-loader-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--srt-gold-dark), var(--srt-gold), var(--srt-gold-light));
+    width: 0%;
+    transition: width 0.3s ease-out;
+    border-radius: var(--srt-radius-full);
+}
+
+.srt-loader-percentage {
+    color: var(--srt-gold);
+    font-size: var(--srt-font-size-xl);
+    font-weight: var(--srt-font-weight-bold);
+    text-align: center;
+    margin: var(--srt-spacing-md) 0;
+}
+
+.srt-loader-tips {
+    color: var(--srt-gray-400);
+    font-size: var(--srt-font-size-sm);
+    text-align: center;
+    margin: var(--srt-spacing-lg) 0;
+    min-height: 40px;
+}
+
+.srt-lets-play-btn {
+    margin-top: var(--srt-spacing-xl);
+    padding: var(--srt-spacing-md) var(--srt-spacing-2xl);
+    font-size: var(--srt-font-size-lg);
+    font-weight: var(--srt-font-weight-bold);
+    animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
