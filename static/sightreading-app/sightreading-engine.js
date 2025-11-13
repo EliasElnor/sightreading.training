@@ -230,65 +230,89 @@
             try {
                 console.log('🔧 Initializing all subsystems...');
 
-                // Show loading screen
+                // Show loading screen with visible delays for better UX
                 this.showLoadingProgress(0, 'Initializing audio engine...');
+                await this.delay(300);
 
                 // Initialize audio engine (non-blocking - continue even if it fails)
                 this.audioEngine = new AudioEngine();
                 try {
                     this.audioEngine.initialize().catch(err => {
                         console.warn('⚠️ Audio engine initialization failed (non-critical):', err);
-                        console.log('Application will continue without audio');
                     });
                 } catch (err) {
                     console.warn('⚠️ Audio engine initialization failed immediately (non-critical):', err);
-                    console.log('Application will continue without audio');
                 }
-                this.showLoadingProgress(30, 'Setting up virtual piano...');
+
+                this.showLoadingProgress(20, 'Setting up virtual piano...');
+                await this.delay(250);
 
                 // Initialize virtual piano
                 this.virtualPiano = new VirtualPiano(this);
                 this.virtualPiano.initialize();
-                this.showLoadingProgress(50, 'Setting up staff renderer...');
+
+                this.showLoadingProgress(40, 'Setting up staff renderer...');
+                await this.delay(250);
 
                 // Initialize staff renderer
                 this.staffRenderer = new StaffRenderer(this);
                 this.staffRenderer.initialize();
+
                 this.showLoadingProgress(60, 'Configuring MIDI...');
+                await this.delay(250);
 
                 // Initialize MIDI handler (non-blocking)
                 this.midiHandler = new MIDIHandler(this);
                 this.midiHandler.initialize().catch(err => {
                     console.warn('⚠️ MIDI initialization failed (non-critical):', err);
                 });
-                this.showLoadingProgress(70, 'Setting up keyboard input...');
+
+                this.showLoadingProgress(75, 'Setting up keyboard input...');
+                await this.delay(250);
 
                 // Initialize keyboard input
                 this.keyboardInput = new KeyboardInput(this);
                 this.keyboardInput.initialize();
-                this.showLoadingProgress(80, 'Loading statistics...');
+
+                this.showLoadingProgress(90, 'Loading statistics...');
+                await this.delay(250);
 
                 // Initialize stats tracker
                 this.statsTracker = new StatsTracker(this);
                 this.statsTracker.initialize();
-                this.showLoadingProgress(90, 'Preparing interface...');
+
+                this.showLoadingProgress(95, 'Preparing interface...');
+                await this.delay(250);
 
                 // Initialize UI controller
                 this.uiController = new UIController(this);
                 this.uiController.initialize();
-                this.showLoadingProgress(100, 'Ready!');
 
                 this.isReady = true;
 
                 console.log('✅ Sight Reading Engine initialized successfully!');
 
-                // Show and enable "Let's Play" button
-                setTimeout(() => {
-                    $('#srtLoadingPercentage').text('100%');
-                    $('#srtLoadingBar').css('width', '100%');
-                    $('#srtLetsPlayBtn').prop('disabled', false).show();
-                    console.log('🎯 Let\'s Play button is now visible and enabled');
-                }, 500);
+                // Animate to 100% and show button with emphasis
+                await this.delay(200);
+                this.showLoadingProgress(100, 'Ready to play! Click the button below.');
+                await this.delay(400);
+
+                // Make button visible with fade-in effect
+                const $btn = $('#srtLetsPlayBtn');
+                $btn.prop('disabled', false);
+                $btn.css({
+                    'display': 'block',
+                    'opacity': 0,
+                    'transform': 'scale(0.9)'
+                });
+                $btn.animate({
+                    'opacity': 1
+                }, 400, function() {
+                    $(this).css('transform', 'scale(1)');
+                });
+
+                console.log('🎯 Let\'s Play button is now visible and enabled');
+                console.log('👆 CLICK THE BUTTON TO START!');
 
             } catch (error) {
                 console.error('❌ Failed to initialize engine:', error);
@@ -296,8 +320,13 @@
                 this.showError('Failed to initialize application: ' + error.message);
 
                 // Still try to show the Let's Play button so user can attempt to start
-                $('#srtLetsPlayBtn').text('Try Anyway').prop('disabled', false).show();
+                $('#srtLetsPlayBtn').text('Try Anyway').prop('disabled', false).fadeIn(400);
             }
+        }
+
+        // Helper method for delays to make loading visible
+        delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
 
         showLoadingProgress(percent, message) {
