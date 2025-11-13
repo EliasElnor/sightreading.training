@@ -611,7 +611,7 @@
                         width: CONFIG.PIANO.WHITE_KEY_WIDTH + 'px',
                         height: CONFIG.PIANO.WHITE_KEY_HEIGHT + 'px'
                     });
-                    
+
                     // Add label to white keys (C notes only)
                     if (noteIndex === 0) {
                         const label = $('<div>')
@@ -619,14 +619,25 @@
                             .text(MIDI_TO_STAFF_POSITION[midiNote]?.noteName || '');
                         key.append(label);
                     }
-                    
+
                     whiteKeyIndex++;
                 } else {
-                    const left = (whiteKeyIndex - 0.5) * CONFIG.PIANO.WHITE_KEY_WIDTH - (CONFIG.PIANO.BLACK_KEY_WIDTH / 2);
+                    // Black keys positioning - placed between white keys with realistic offset
+                    // Black key appears after the white key to its left
+                    const whiteKeyWidth = CONFIG.PIANO.WHITE_KEY_WIDTH;
+                    const blackKeyWidth = CONFIG.PIANO.BLACK_KEY_WIDTH;
+
+                    // Position based on the white key position (black key comes after whiteKeyIndex-1)
+                    // Use realistic piano proportions: black keys are slightly offset
+                    const baseLeft = (whiteKeyIndex) * whiteKeyWidth - (blackKeyWidth / 2);
+                    const left = baseLeft - (whiteKeyWidth * 0.1); // Offset slightly left for realism
+
                     key.css({
                         left: left + 'px',
-                        width: CONFIG.PIANO.BLACK_KEY_WIDTH + 'px',
-                        height: CONFIG.PIANO.BLACK_KEY_HEIGHT + 'px'
+                        width: blackKeyWidth + 'px',
+                        height: CONFIG.PIANO.BLACK_KEY_HEIGHT + 'px',
+                        zIndex: '2', // Black keys above white keys
+                        position: 'absolute'
                     });
                 }
                 
@@ -643,18 +654,42 @@
 
         attachEventListeners() {
             const self = this;
-            
-            // Mouse/touch events
+            let isMouseDown = false;
+
+            // Mouse/touch events with drag support
             this.container.on('mousedown touchstart', '.srt-piano-key', function(e) {
                 e.preventDefault();
+                isMouseDown = true;
                 const midi = parseInt($(this).attr('data-midi'));
                 self.handleKeyPress(midi, $(this));
             });
-            
-            this.container.on('mouseup touchend mouseleave', '.srt-piano-key', function(e) {
-                e.preventDefault();
-                const midi = parseInt($(this).attr('data-midi'));
-                self.handleKeyRelease(midi, $(this));
+
+            // Global mouse up to detect when dragging ends
+            $(document).on('mouseup touchend', function() {
+                if (isMouseDown) {
+                    isMouseDown = false;
+                    // Release all active keys
+                    self.container.find('.srt-piano-key.active').each(function() {
+                        const midi = parseInt($(this).attr('data-midi'));
+                        self.handleKeyRelease(midi, $(this));
+                    });
+                }
+            });
+
+            // Mouse enter for drag support - play note when dragging over keys
+            this.container.on('mouseenter', '.srt-piano-key', function(e) {
+                if (isMouseDown) {
+                    const midi = parseInt($(this).attr('data-midi'));
+                    self.handleKeyPress(midi, $(this));
+                }
+            });
+
+            // Mouse leave - release note if not sustaining
+            this.container.on('mouseleave', '.srt-piano-key', function(e) {
+                if (isMouseDown && !self.sustainPedal) {
+                    const midi = parseInt($(this).attr('data-midi'));
+                    self.handleKeyRelease(midi, $(this));
+                }
             });
         }
 
