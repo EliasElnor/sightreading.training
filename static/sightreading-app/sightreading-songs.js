@@ -9,8 +9,6 @@
 (function(window) {
     'use strict';
 
-    console.log('🎵 Loading Songs Library...');
-
     const SONGS_LIBRARY = {
         // Exercices techniques
         exercises: [
@@ -259,7 +257,5 @@
         getAllSongs,
         getRandomSong
     };
-
-    console.log('✅ Songs Library loaded -', getAllSongs().length, 'songs available');
 
 })(window);

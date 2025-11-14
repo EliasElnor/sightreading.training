@@ -565,6 +565,41 @@ class PianoMode_SightReading_Game {
                                 <button class="srt-generator-btn" data-generator="chords">Chords</button>
                                 <button class="srt-generator-btn" data-generator="progression">Progression</button>
                                 <button class="srt-generator-btn" data-generator="arpeggios">Arpeggios</button>
+                                <button class="srt-generator-btn" data-generator="song">Song</button>
+                            </div>
+                        </div>
+
+                        <!-- Song Selector (shown when Song generator is active) -->
+                        <div class="srt-setting-group" id="srtSongSelectorGroup" style="display: none;">
+                            <h4>Select Song</h4>
+                            <select id="srtSongSelect" class="srt-select">
+                                <optgroup label="Exercises">
+                                    <option value="hanon-1">Hanon Exercise No. 1</option>
+                                    <option value="czerny-100-1">Czerny 100 - Exercise 1</option>
+                                </optgroup>
+                                <optgroup label="Classical">
+                                    <option value="ode-to-joy">Ode to Joy - Beethoven</option>
+                                    <option value="fur-elise-intro">Für Elise (intro) - Beethoven</option>
+                                    <option value="prelude-c-major">Prelude in C Major - Bach</option>
+                                </optgroup>
+                                <optgroup label="Jazz">
+                                    <option value="autumn-leaves-head">Autumn Leaves - Kosma</option>
+                                </optgroup>
+                                <optgroup label="Pop/Rock">
+                                    <option value="let-it-be-chorus">Let It Be - The Beatles</option>
+                                    <option value="imagine-intro">Imagine - John Lennon</option>
+                                </optgroup>
+                                <optgroup label="Scales & Arpeggios">
+                                    <option value="c-major-scale">C Major Scale</option>
+                                    <option value="c-major-arpeggio">C Major Arpeggio</option>
+                                </optgroup>
+                            </select>
+                            <button class="srt-btn srt-btn-secondary" id="srtLoadSongBtn">Load Song</button>
+                            <div class="srt-file-upload" style="margin-top: 15px;">
+                                <label class="srt-upload-label">
+                                    <input type="file" id="srtMidiUpload" accept=".mid,.midi" style="display: none;">
+                                    <span class="srt-btn srt-btn-secondary" style="display: inline-block; width: 100%; text-align: center;">Upload MIDI File</span>
+                                </label>
                             </div>
                         </div>
 

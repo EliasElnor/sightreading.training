@@ -425,6 +425,20 @@
                 this.saveSettings();
             });
 
+            // Load Song button
+            $('#srtLoadSongBtn').on('click', () => {
+                const songId = $('#srtSongSelect').val();
+                this.loadSong(songId);
+            });
+
+            // MIDI File Upload
+            $('#srtMidiUpload').on('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    this.loadMidiFile(file);
+                }
+            });
+
             // Key signature selector
             $('#srtKeySignature').on('change', (e) => {
                 this.setKeySignature(e.target.value);
@@ -578,7 +592,121 @@
         generateInitialNotes() {
             this.notes = this.noteGenerator.generate();
         }
-        
+
+        /**
+         * Load a song from the library by ID
+         */
+        loadSong(songId) {
+            if (!window.SRTSongs) {
+                return;
+            }
+
+            const song = window.SRTSongs.getSongById(songId);
+            if (!song) {
+                return;
+            }
+
+            // Convert song format to note format
+            this.notes = [];
+            let measure = 0;
+            let beat = 0;
+
+            song.notes.forEach((noteData) => {
+                if (noteData.type === 'rest') {
+                    // Skip rest
+                    beat += noteData.beats || 1;
+                } else if (noteData.type === 'chord') {
+                    // Chord - add all notes at same position
+                    noteData.notes.forEach((midi, index) => {
+                        this.notes.push({
+                            midi: midi,
+                            duration: noteData.duration,
+                            measure: measure,
+                            beat: beat,
+                            staff: midi >= 60 ? 'treble' : 'bass',
+                            chord: true,
+                            chordOffset: index * 0.5
+                        });
+                    });
+                    beat += noteData.beats || 1;
+                } else {
+                    // Single note
+                    this.notes.push({
+                        midi: noteData.midi,
+                        duration: noteData.duration,
+                        measure: measure,
+                        beat: beat,
+                        staff: noteData.midi >= 60 ? 'treble' : 'bass'
+                    });
+                    beat += noteData.beats || 1;
+                }
+
+                // Move to next measure when beat >= 4
+                while (beat >= 4) {
+                    beat -= 4;
+                    measure++;
+                }
+            });
+
+            // Update tempo and key signature from song
+            if (song.tempo) {
+                this.setTempo(song.tempo);
+                $('#srtTempoSlider').val(song.tempo);
+                $('#srtTempoValue').text(song.tempo);
+            }
+
+            if (song.keySignature) {
+                this.setKeySignature(song.keySignature);
+            }
+
+            // Render the loaded song
+            this.render();
+        }
+
+        /**
+         * Load and parse a MIDI file
+         */
+        loadMidiFile(file) {
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                try {
+                    const arrayBuffer = e.target.result;
+                    this.parseMidiFile(arrayBuffer, file.name);
+                } catch (error) {
+                    alert('Error loading MIDI file: ' + error.message);
+                }
+            };
+
+            reader.onerror = () => {
+                alert('Error reading file');
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        /**
+         * Parse MIDI file arrayBuffer
+         * Basic MIDI parser - supports simple MIDI files
+         */
+        parseMidiFile(arrayBuffer, filename) {
+            // For now, show a message that MIDI parsing is being implemented
+            // Full MIDI parsing would require a library like midi-parser-js or Tone.js MIDI
+            alert('MIDI file parsing is being implemented. For now, please use the built-in song library.');
+
+            // TODO: Implement full MIDI file parsing
+            // This would involve:
+            // 1. Parsing MIDI file header (format, tracks, division)
+            // 2. Parsing track chunks (events, tempo, time signature, notes)
+            // 3. Converting MIDI events to note format
+            // 4. Handling multi-track files
+            // 5. Converting delta times to beats/measures
+
+            // Placeholder for future implementation
+            this.notes = [];
+            this.render();
+        }
+
         /**
          * Hide loading screen and show main interface
          */
@@ -1553,8 +1681,15 @@
             $('.srt-btn-option[data-generator]').removeClass('active');
             $(`.srt-btn-option[data-generator="${type}"]`).addClass('active');
 
-            // Generate new notes
-            this.generateInitialNotes();
+            // Show/hide song selector based on generator type
+            if (type === 'song') {
+                $('#srtSongSelectorGroup').slideDown(200);
+            } else {
+                $('#srtSongSelectorGroup').slideUp(200);
+                // Generate new notes for other generators
+                this.generateInitialNotes();
+            }
+
             this.saveSettings();
         }
         
