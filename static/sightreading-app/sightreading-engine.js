@@ -1893,109 +1893,79 @@
             this.container.innerHTML = '';
             this.keys = [];
 
+            let startPitch, endPitch;
+
             if (octaveCount === 5) {
                 // 5 octaves: C2 to C7 (61 keys)
-                for (let octave = 2; octave <= 6; octave++) {
-                    this.createOctave(octave);
-                }
-                // Add final C7
-                this.createSingleKey('C', 7, 'white');
+                startPitch = this.parseNote('C2');
+                endPitch = this.parseNote('C7');
             } else {
                 // 7 octaves: A0 to C8 (88 keys - full piano)
-                // Start with A0 and B0
-                this.createSingleKey('A', 0, 'white');
-                this.createSingleKey('A#', 0, 'black');
-                this.createSingleKey('B', 0, 'white');
+                startPitch = this.parseNote('A0');
+                endPitch = this.parseNote('C8');
+            }
 
-                // Create full octaves C1 to C7
-                for (let octave = 1; octave <= 7; octave++) {
-                    this.createOctave(octave);
+            // Create all keys sequentially
+            for (let pitch = startPitch; pitch <= endPitch; pitch++) {
+                const isBlack = this.isBlackKey(pitch);
+                const noteName = this.midiToNoteName(pitch);
+
+                // Create key wrapper (for proper positioning)
+                const wrapper = document.createElement('div');
+                wrapper.className = 'srt-key-wrapper';
+
+                // Create key element
+                const key = document.createElement('div');
+                key.className = `srt-piano-key ${isBlack ? 'srt-piano-key-black' : 'srt-piano-key-white'}`;
+                key.dataset.note = noteName;
+                key.dataset.midi = pitch;
+
+                // Add note label for C notes (white keys only)
+                if (!isBlack && noteName.startsWith('C')) {
+                    const label = document.createElement('span');
+                    label.className = 'srt-key-label';
+                    label.textContent = noteName;
+                    key.appendChild(label);
                 }
 
-                // Add final C8
-                this.createSingleKey('C', 8, 'white');
-            }
-        }
+                wrapper.appendChild(key);
+                this.container.appendChild(wrapper);
 
-        createSingleKey(note, octave, type) {
-            const key = document.createElement('div');
-            key.className = `srt-piano-key srt-piano-key-${type}`;
-            key.dataset.note = note + octave;
-            key.dataset.midi = this.noteToMidi(note + octave);
-
-            // Add label for C notes
-            if (type === 'white' && note === 'C') {
-                const label = document.createElement('span');
-                label.className = 'srt-key-label';
-                label.textContent = `C${octave}`;
-                key.appendChild(label);
-            }
-
-            this.container.appendChild(key);
-            this.keys.push({
-                element: key,
-                note: note + octave,
-                midi: this.noteToMidi(note + octave),
-                type: type
-            });
-        }
-        
-        createOctave(octave) {
-            const noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-            const blackKeys = {
-                'C#': 1, 'D#': 2, 'F#': 4, 'G#': 5, 'A#': 6
-            };
-            
-            const octaveContainer = document.createElement('div');
-            octaveContainer.className = 'srt-piano-octave';
-            octaveContainer.dataset.octave = octave;
-            
-            // Create white keys
-            noteNames.forEach((note, index) => {
-                const key = this.createKey(note, octave, 'white', index);
-                octaveContainer.appendChild(key);
                 this.keys.push({
                     element: key,
-                    note: note + octave,
-                    midi: this.noteToMidi(note + octave),
-                    type: 'white'
+                    note: noteName,
+                    midi: pitch,
+                    type: isBlack ? 'black' : 'white'
                 });
-            });
-            
-            // Create black keys
-            Object.entries(blackKeys).forEach(([note, position]) => {
-                const key = this.createKey(note, octave, 'black', position);
-                octaveContainer.appendChild(key);
-                this.keys.push({
-                    element: key,
-                    note: note + octave,
-                    midi: this.noteToMidi(note + octave),
-                    type: 'black'
-                });
-            });
-            
-            this.container.appendChild(octaveContainer);
+            }
         }
-        
-        createKey(note, octave, type, position) {
-            const key = document.createElement('div');
-            key.className = `srt-piano-key srt-piano-key-${type}`;
-            key.dataset.note = note + octave;
-            key.dataset.midi = this.noteToMidi(note + octave);
-            
-            if (type === 'black') {
-                key.style.left = `${position * 40 - 10}px`;
-            }
-            
-            // Add note label for white keys
-            if (type === 'white' && note === 'C') {
-                const label = document.createElement('span');
-                label.className = 'srt-key-label';
-                label.textContent = `C${octave}`;
-                key.appendChild(label);
-            }
-            
-            return key;
+
+        isBlackKey(pitch) {
+            // Black keys are at positions 1, 3, 6, 8, 10 in the 12-note octave
+            const pitchClass = pitch % 12;
+            return [1, 3, 6, 8, 10].includes(pitchClass);
+        }
+
+        parseNote(noteName) {
+            // Simple note parser: e.g., "C4" → 60
+            const noteMatch = noteName.match(/^([A-G])(#|b)?(\d+)$/);
+            if (!noteMatch) return 60;
+
+            const [_, letter, accidental, octave] = noteMatch;
+            const noteOffsets = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+
+            let pitch = (parseInt(octave) + 1) * 12 + noteOffsets[letter];
+            if (accidental === '#') pitch++;
+            if (accidental === 'b') pitch--;
+
+            return pitch;
+        }
+
+        midiToNoteName(pitch) {
+            const octave = Math.floor(pitch / 12) - 1;
+            const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const noteName = noteNames[pitch % 12];
+            return `${noteName}${octave}`;
         }
         
         setupEventListeners() {
