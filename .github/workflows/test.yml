@@ -1,20 +1,51 @@
 name: "test"
 
 on: [push, pull_request]
+
 jobs:
   docker:
     runs-on: ubuntu-latest
 
+    # --- 1. NOUVEAU : Démarrer le service PostgreSQL pour les tests ---
+    services:
+      postgres:
+        image: postgres:15-alpine
+        # Variables d'environnement pour configurer la base de données de test
+        env:
+          # Ces variables sont lues par le service PostgreSQL
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        # Attendre que la base de données soit prête avant de lancer le test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
-    - uses: actions/checkout@master
+      - uses: actions/checkout@master
 
-    - name: npm install
-      run: npm install
+      # L'étape 'npm install' est souvent gérée par le Dockerfile lui-même. 
+      # On la laisse en commentaire pour l'instant si elle n'est pas nécessaire.
+      # - name: npm install 
+      #   run: npm install
 
-    - name: build
-      run: |
-        docker build -t sightreading-test .
+      - name: build
+        run: |
+          # Construire l'image Docker
+          docker build -t sightreading-test .
 
-    - name: test
-      run: |
-        docker run sightreading-test
+      - name: test (Lancer le conteneur en lui passant les variables de connexion)
+        run: |
+          # Ces variables sont lues par votre application Lapis.
+          # DB_HOST=postgres car 'postgres' est le nom du service défini ci-dessus.
+          docker run \
+            --env DB_HOST=postgres \
+            --env DB_USER=test_user \
+            --env DB_PASSWORD=test_password \
+            --env DB_NAME=test_db \
+            --network host \
+            sightreading-test
