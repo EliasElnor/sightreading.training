@@ -18,8 +18,6 @@
 (function($) {
     'use strict';
 
-    console.log('✅ SIGHTREADING ENGINE FILE LOADED - Version 2.5.0');
-    console.log('📦 If you see this, the JavaScript file is loading correctly!');
 
     /**
      * Main Sight Reading Engine Class
@@ -71,7 +69,6 @@
          */
         async init() {
             try {
-                console.log('🔧 Starting engine initialization...');
 
                 this.updateLoadingProgress(5, 'Loading user settings...');
                 await this.delay(300);
@@ -113,7 +110,6 @@
                 await this.delay(400);
 
                 this.showLetsPlayButton();
-                console.log('✅ Engine initialization complete!');
 
             } catch (error) {
                 console.error('❌ Initialization error:', error);
@@ -147,7 +143,6 @@
                 $tips.text('💡 ' + message);
             }
 
-            console.log(`📊 Loading: ${percent}% - ${message}`);
         }
 
         /**
@@ -165,23 +160,18 @@
 
                 // Attach click handler
                 $btn.off('click').on('click', () => {
-                    console.log('🎯 Let\'s Play button clicked!');
                     this.hideLoadingScreen();
 
                     // RE-INITIALIZE canvas and piano NOW that interface is visible
                     setTimeout(() => {
-                        console.log('🔄 Re-initializing canvas and piano with visible interface...');
                         this.setupCanvas();
                         this.setupPiano();
                         this.setupRenderer();
                         this.generateInitialNotes();
                         this.startAnimationLoop();
-                        console.log('✅ Canvas and piano re-initialized!');
                     }, 600); // Wait for fadeIn to complete
                 });
 
-                console.log('🎯 Let\'s Play button is now visible and clickable!');
-                console.log('👆 USER: CLICK THE BUTTON TO START!');
             } else {
                 console.error('❌ Let\'s Play button not found!');
                 // Fallback: just hide loading screen
@@ -236,7 +226,6 @@
                 return;
             }
 
-            console.log('🎨 Setting up canvas...');
             this.ctx = this.canvas.getContext('2d');
             this.resizeCanvas();
 
@@ -244,7 +233,6 @@
             const dpr = window.devicePixelRatio || 1;
             const rect = this.canvas.getBoundingClientRect();
 
-            console.log(`📐 Canvas dimensions: ${rect.width}x${rect.height} (DPR: ${dpr})`);
 
             this.canvas.width = rect.width * dpr;
             this.canvas.height = rect.height * dpr;
@@ -254,7 +242,6 @@
             this.canvas.style.width = rect.width + 'px';
             this.canvas.style.height = rect.height + 'px';
 
-            console.log(`✅ Canvas setup complete: ${this.canvas.width}x${this.canvas.height}px`);
         }
         
         /**
@@ -328,7 +315,6 @@
             
             // Settings button
             $('#srtSettingsBtn').on('click', () => {
-                console.log('🔧 Settings button clicked');
                 this.toggleSettingsPanel();
             });
 
@@ -344,7 +330,6 @@
 
             // Stats button
             $('#srtStatsBtn').on('click', () => {
-                console.log('📊 Stats button clicked');
                 this.toggleStatsPanel();
             });
 
@@ -369,7 +354,6 @@
                 $('.srt-staff-btn').removeClass('active');
                 $(e.currentTarget).addClass('active');
                 this.setClef(staff); // Update clef
-                console.log('🎼 Staff changed:', staff);
             });
 
             // CORRECTED: Generator type buttons (HTML uses .srt-generator-btn)
@@ -378,7 +362,6 @@
                 $('.srt-generator-btn').removeClass('active');
                 $(e.currentTarget).addClass('active');
                 this.setGeneratorType(generator);
-                console.log('🎲 Generator changed:', generator);
             });
 
             // CORRECTED: Key signature buttons (HTML uses .srt-key-btn)
@@ -387,7 +370,6 @@
                 $('.srt-key-btn').removeClass('active');
                 $(e.currentTarget).addClass('active');
                 this.setKeySignature(key);
-                console.log('🎹 Key changed:', key);
             });
 
             // ADDED: Notes per chord slider
@@ -396,7 +378,6 @@
                 $('#srtNotesValue').text(value);
                 this.userSettings.notes_count = value;
                 this.generateInitialNotes(); // Regenerate with new count
-                console.log('🎵 Notes per chord:', value);
             });
 
             // ADDED: Hands slider
@@ -404,7 +385,6 @@
                 const value = parseInt(e.target.value);
                 $('#srtHandsValue').text(value);
                 this.userSettings.hands_count = value;
-                console.log('🙌 Hands:', value);
             });
             
             // Key signature selector
@@ -544,35 +524,27 @@
          * Setup renderer
          */
         setupRenderer() {
-            console.log('🎼 Setting up renderer...');
             this.renderer = new StaffRenderer(this);
-            console.log('✅ Renderer created');
         }
         
         /**
          * Generate initial notes
          */
         generateInitialNotes() {
-            console.log('🎵 Generating initial notes...');
             this.notes = this.noteGenerator.generate();
-            console.log(`✅ Generated ${this.notes.length} notes:`, this.notes);
         }
         
         /**
          * Hide loading screen and show main interface
          */
         hideLoadingScreen() {
-            console.log('💫 Hiding loading screen and showing interface...');
 
             $('.srt-loading-screen').fadeOut(500, () => {
-                console.log('✅ Loading screen hidden');
 
                 // Show main interface elements
                 $('#srtHeader').fadeIn(400);
                 $('#srtToolbar').fadeIn(400);
                 $('#srtMainArea').fadeIn(400, () => {
-                    console.log('✅ Main interface visible');
-                    console.log('🎹 Ready to play!');
                 });
             });
         }
@@ -712,9 +684,6 @@
 
             // Log first render only
             if (!this.firstRenderLogged) {
-                console.log('🎨 First render call - Drawing staff and notes...');
-                console.log(`   Canvas: ${this.canvas.width}x${this.canvas.height}`);
-                console.log(`   Notes to render: ${this.notes.length}`);
                 this.firstRenderLogged = true;
             }
 
@@ -1291,7 +1260,6 @@
                 },
                 success: (response) => {
                     if (response.success) {
-                        console.log('Achievement saved:', achievementId);
                     }
                 }
             });
@@ -1331,7 +1299,6 @@
                 },
                 success: (response) => {
                     if (response.success) {
-                        console.log('Session saved');
                     }
                 }
             });
@@ -1391,12 +1358,10 @@
 
             if (isOpen) {
                 $panel.removeClass('open');
-                console.log('🔧 Settings panel closed');
             } else {
                 // Close stats panel if open
                 this.closeStatsPanel();
                 $panel.addClass('open');
-                console.log('🔧 Settings panel opened');
             }
         }
 
@@ -1410,12 +1375,10 @@
 
             if (isOpen) {
                 $panel.removeClass('open');
-                console.log('📊 Stats panel closed');
             } else {
                 // Close settings panel if open
                 this.closeSettingsPanel();
                 $panel.addClass('open');
-                console.log('📊 Stats panel opened');
             }
         }
 
@@ -1614,7 +1577,6 @@
                     },
                     success: (response) => {
                         if (response.success) {
-                            console.log('Settings saved');
                         }
                     }
                 });
@@ -2073,7 +2035,6 @@
         
         async init() {
             if (!navigator.requestMIDIAccess) {
-                console.log('Web MIDI API not supported');
                 this.updateStatus('unsupported');
                 return;
             }
@@ -2108,7 +2069,6 @@
             // Populate input devices
             const inputSelect = document.getElementById('srtMidiInput');
             if (!inputSelect) {
-                console.warn('⚠️ MIDI input select not found in DOM - skipping device population');
                 return;
             }
 
@@ -2273,7 +2233,6 @@
             const statusText = document.getElementById('srtMidiStatusText');
 
             if (!statusElement || !statusText) {
-                console.warn('⚠️ MIDI status elements not found in DOM - skipping status update');
                 return;
             }
 
@@ -2318,7 +2277,6 @@
         }
         
         init() {
-            console.log('🔊 Initializing audio with Tone.js...');
 
             // Check if Tone.js is available
             if (typeof Tone === 'undefined') {
@@ -2326,7 +2284,6 @@
                 return;
             }
 
-            console.log('✅ Tone.js version:', Tone.version);
 
             // Initialize Web Audio API (for metronome)
             this.context = new (window.AudioContext || window.webkitAudioContext)();
@@ -2342,7 +2299,6 @@
 
             // Start Tone.js audio context
             Tone.start().then(() => {
-                console.log('✅ Tone.js audio context started');
             });
 
             // Create Tone.js Sampler with simple sine waves for now
@@ -2357,7 +2313,6 @@
                 release: 1,
                 baseUrl: "https://tonejs.github.io/audio/salamander/",
                 onload: () => {
-                    console.log('✅ Piano sampler loaded (Salamander Grand Piano)');
                 }
             }).toDestination();
 
@@ -2367,13 +2322,11 @@
             // Enable metronome
             this.metronome = true;
 
-            console.log('✅ Audio initialization complete');
         }
         
         loadDefaultSounds() {
             // Sound files disabled - using Tone.js for all audio
             // TODO: Add sound files or use Tone.js to generate UI sounds
-            console.log('ℹ️ UI sounds disabled (files not available)');
         }
         
         async loadSound(name, url) {
@@ -2401,7 +2354,6 @@
         
         playNote(midi, velocity = 127) {
             if (!this.pianoSampler) {
-                console.warn('⚠️ Piano sampler not initialized');
                 return;
             }
 
@@ -2812,7 +2764,6 @@
         
         renderStaff() {
             if (!this.staffRenderLogged) {
-                console.log('📝 Rendering staff (clef:', this.clef, ')');
                 this.staffRenderLogged = true;
             }
 
@@ -3401,10 +3352,8 @@
         const existing = container.querySelector('.srt-loading-screen');
         if (existing) {
             existing.remove();
-            console.log('🗑️ Removed PHP-generated loading screen (using JS version instead)');
         }
 
-        console.log('🎨 Creating loading screen dynamically...');
 
         const loadingHTML = `
             <div class="srt-loading-screen" id="srtLoadingScreen" style="position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100vw !important; height: 100vh !important; background: linear-gradient(135deg, #0B0B0B 0%, #1A1A1A 100%) !important; display: flex !important; align-items: center !important; justify-content: center !important; z-index: 999999 !important; visibility: visible !important; opacity: 1 !important;">
@@ -3430,7 +3379,6 @@
 
         const loadingScreen = document.getElementById('srtLoadingScreen');
         if (loadingScreen) {
-            console.log('✅ Loading screen created successfully');
             return loadingScreen;
         } else {
             console.error('❌ Failed to create loading screen!');
@@ -3443,8 +3391,6 @@
        ===================================================== */
 
     $(document).ready(function() {
-        console.log('🎹 PianoMode Sight Reading Training - PACK_5 Complete');
-        console.log('📦 Version: 2.5.0 - WordPress Integration');
 
         // Get container
         const container = document.getElementById('sightReadingGame');
@@ -3456,7 +3402,6 @@
             return;
         }
 
-        console.log('✅ Container found:', container);
 
         // ALWAYS create loading screen in JavaScript (don't rely on PHP HTML)
         const loadingScreen = ensureLoadingScreen(container);
@@ -3467,7 +3412,6 @@
         }
 
         // Initialize engine
-        console.log('🚀 Initializing Sight Reading Engine...');
         window.sightReadingEngine = new SightReadingEngine(container);
     });
 
