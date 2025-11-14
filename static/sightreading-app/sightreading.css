@@ -1444,15 +1444,20 @@ body .srt-container {
 .srt-piano-keyboard {
     display: flex;
     position: relative;
-    height: 180px; /* Taller piano keys (was 120px) */
+    height: 180px;
     min-width: max-content;
-    margin: 0 auto; /* Center */
+    margin: 0 auto;
+    /* CSS variables for dynamic key sizing */
+    --white-key-width: 24px; /* Default for 7 octaves */
+    --black-key-width: 16px;
+    --white-key-height: 180px;
+    --black-key-height: 120px;
 }
 
 .srt-piano-octave {
     position: relative;
-    display: flex;
-    margin-right: 2px;
+    display: inline-flex;
+    margin-right: 1px;
 }
 
 /* Piano Keys */
@@ -1464,13 +1469,14 @@ body .srt-container {
 }
 
 .srt-piano-key-white {
-    width: 50px; /* Wider keys (was 40px) */
-    height: 180px; /* Match container height */
+    width: var(--white-key-width);
+    height: var(--white-key-height);
     background: linear-gradient(to bottom, #fff 0%, #f8f8f8 100%);
     border: 1px solid #ccc;
-    border-radius: 0 0 5px 5px; /* Slightly more rounded */
-    margin-right: 2px;
+    border-radius: 0 0 5px 5px;
+    margin-right: 1px;
     z-index: 1;
+    display: inline-block;
 }
 
 .srt-piano-key-white:hover {
@@ -1485,13 +1491,14 @@ body .srt-container {
 }
 
 .srt-piano-key-black {
-    width: 34px; /* Wider black keys (was 28px) */
-    height: 120px; /* Taller black keys (was 80px) */
+    width: var(--black-key-width);
+    height: var(--black-key-height);
     background: linear-gradient(to bottom, #333 0%, #000 100%);
     border-radius: 0 0 4px 4px;
     position: absolute;
     z-index: 2;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    left: calc(var(--white-key-width) - var(--black-key-width) / 2);
 }
 
 .srt-piano-key-black:hover {

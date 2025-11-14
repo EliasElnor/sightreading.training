@@ -1757,29 +1757,98 @@
             this.transpose = 0;
             this.sustain = false;
             this.activeNotes = new Set();
+            this.octaveCount = 7; // Default to 88 keys (7 octaves)
         }
-        
+
         init() {
             this.container = document.getElementById('srtPianoKeyboard');
             if (!this.container) {
                 console.error('Piano container not found');
                 return;
             }
-            
-            this.createKeys();
+
+            this.createKeys(this.octaveCount);
             this.setupEventListeners();
             this.mapComputerKeyboard();
+
+            // Listen for octave select changes
+            const octaveSelect = document.getElementById('srtOctaveSelect');
+            if (octaveSelect) {
+                octaveSelect.addEventListener('change', (e) => {
+                    this.setOctaveRange(parseInt(e.target.value));
+                });
+            }
         }
-        
-        createKeys() {
+
+        setOctaveRange(octaveCount) {
+            this.octaveCount = octaveCount;
+            this.createKeys(octaveCount);
+            this.setupEventListeners();
+
+            // Adjust piano key sizes based on octave count
+            this.adjustKeySize(octaveCount);
+        }
+
+        adjustKeySize(octaveCount) {
+            // Calculate key width based on number of octaves
+            // 5 octaves = larger keys, 7 octaves = smaller keys
+            const whiteKeyWidth = octaveCount === 5 ? 32 : 24;
+            const blackKeyWidth = octaveCount === 5 ? 22 : 16;
+
+            this.container.style.setProperty('--white-key-width', whiteKeyWidth + 'px');
+            this.container.style.setProperty('--black-key-width', blackKeyWidth + 'px');
+        }
+
+        createKeys(octaveCount = 7) {
             // Clear existing keys
             this.container.innerHTML = '';
             this.keys = [];
-            
-            // Create 3 octaves (C3 to B5)
-            for (let octave = 3; octave <= 5; octave++) {
-                this.createOctave(octave);
+
+            if (octaveCount === 5) {
+                // 5 octaves: C2 to C7 (61 keys)
+                for (let octave = 2; octave <= 6; octave++) {
+                    this.createOctave(octave);
+                }
+                // Add final C7
+                this.createSingleKey('C', 7, 'white');
+            } else {
+                // 7 octaves: A0 to C8 (88 keys - full piano)
+                // Start with A0 and B0
+                this.createSingleKey('A', 0, 'white');
+                this.createSingleKey('A#', 0, 'black');
+                this.createSingleKey('B', 0, 'white');
+
+                // Create full octaves C1 to C7
+                for (let octave = 1; octave <= 7; octave++) {
+                    this.createOctave(octave);
+                }
+
+                // Add final C8
+                this.createSingleKey('C', 8, 'white');
             }
+        }
+
+        createSingleKey(note, octave, type) {
+            const key = document.createElement('div');
+            key.className = `srt-piano-key srt-piano-key-${type}`;
+            key.dataset.note = note + octave;
+            key.dataset.midi = this.noteToMidi(note + octave);
+
+            // Add label for C notes
+            if (type === 'white' && note === 'C') {
+                const label = document.createElement('span');
+                label.className = 'srt-key-label';
+                label.textContent = `C${octave}`;
+                key.appendChild(label);
+            }
+
+            this.container.appendChild(key);
+            this.keys.push({
+                element: key,
+                note: note + octave,
+                midi: this.noteToMidi(note + octave),
+                type: type
+            });
         }
         
         createOctave(octave) {
