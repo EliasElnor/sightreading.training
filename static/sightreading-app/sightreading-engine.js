@@ -721,19 +721,33 @@
             // Clear canvas
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+            // In scroll mode, translate canvas so notes scroll right to left
+            // This creates the visual effect of playhead moving left to right
+            if (this.mode === 'scroll') {
+                this.ctx.save();
+                // Translate by negative playhead position to scroll notes left
+                this.ctx.translate(-this.playheadPosition, 0);
+            }
+
             // Render staff
             this.renderer.renderStaff();
 
             // Render notes
             this.renderer.renderNotes(this.notes);
 
-            // Render playhead (for scroll mode)
+            // Render feedback layer
+            this.renderer.renderFeedback();
+
+            // Restore canvas transform after rendering notes
+            if (this.mode === 'scroll') {
+                this.ctx.restore();
+            }
+
+            // Render playhead (for scroll mode) - drawn AFTER restoring transform
+            // so it stays at a fixed position on screen
             if (this.mode === 'scroll') {
                 this.renderer.renderPlayhead(this.playheadPosition);
             }
-
-            // Render feedback layer
-            this.renderer.renderFeedback();
 
             // Render current note indicator (for wait mode)
             if (this.mode === 'wait' && this.currentNoteIndex < this.notes.length) {
@@ -3084,14 +3098,18 @@
         
         renderPlayhead(position) {
             const ctx = this.ctx;
-            const x = 200 - (this.engine.playheadPosition % (this.measureWidth * 4));
-            
+            const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);
+
+            // Playhead at fixed position (1/3 from left) - this creates the visual
+            // effect of the playhead moving left to right as notes scroll past it
+            const x = canvasWidth / 3;
+
             ctx.save();
             ctx.strokeStyle = '#C59D3A';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 3;
             ctx.shadowColor = '#C59D3A';
-            ctx.shadowBlur = 10;
-            
+            ctx.shadowBlur = 15;
+
             if (this.clef === 'grand') {
                 // Span both staves
                 ctx.beginPath();
@@ -3105,7 +3123,7 @@
                 ctx.lineTo(x, this.staffY + 60);
                 ctx.stroke();
             }
-            
+
             ctx.restore();
         }
         
