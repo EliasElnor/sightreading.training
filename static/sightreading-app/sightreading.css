@@ -962,9 +962,9 @@ body .srt-container {
    ===================================================== */
 
 .srt-panel {
-    /* Full screen overlay panels */
+    /* Full screen overlay panels - START BELOW HEADER */
     position: fixed;
-    top: 0;
+    top: 90px; /* Start below sticky header (was 0) */
     bottom: 0;
     width: 500px; /* Wider panels */
     max-width: 90vw;
@@ -975,9 +975,55 @@ body .srt-container {
     overflow-y: auto;
     overflow-x: hidden;
     transition: transform 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
-    z-index: 9999; /* Above everything */
+    z-index: 999; /* Below header but above content */
     box-shadow: 0 0 60px rgba(0, 0, 0, 0.8);
     pointer-events: none; /* Don't block clicks when hidden */
+}
+
+/* Chevron Close Button on Panel Edge */
+.srt-panel-chevron {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 120px;
+    background: rgba(197, 157, 58, 0.9);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.srt-panel.open .srt-panel-chevron {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.srt-panel-chevron-left {
+    right: -40px; /* Outside panel on right edge */
+    border-radius: 0 12px 12px 0;
+}
+
+.srt-panel-chevron-right {
+    left: -40px; /* Outside panel on left edge */
+    border-radius: 12px 0 0 12px;
+}
+
+.srt-panel-chevron:hover {
+    background: var(--srt-gold);
+    width: 45px;
+    box-shadow: 0 0 20px rgba(197, 157, 58, 0.6);
+}
+
+.srt-panel-chevron svg {
+    width: 24px;
+    height: 24px;
+    color: var(--srt-black);
 }
 
 .srt-panel-left {

@@ -332,8 +332,13 @@
                 this.toggleSettingsPanel();
             });
 
-            // Settings panel close
-            $('#srtPanelClose').on('click', () => {
+            // Settings panel close (X button)
+            $('#srtPanelClose, #srtSettingsPanelClose').on('click', () => {
+                this.closeSettingsPanel();
+            });
+
+            // Settings panel chevron (arrow button)
+            $('#srtSettingsChevron').on('click', () => {
                 this.closeSettingsPanel();
             });
 
@@ -343,8 +348,13 @@
                 this.toggleStatsPanel();
             });
 
-            // Stats panel close
+            // Stats panel close (X button)
             $('#srtStatsPanelClose').on('click', () => {
+                this.closeStatsPanel();
+            });
+
+            // Stats panel chevron (arrow button)
+            $('#srtStatsChevron').on('click', () => {
                 this.closeStatsPanel();
             });
             
@@ -352,17 +362,49 @@
             $('#srtDifficultySelect').on('change', (e) => {
                 this.setDifficulty(e.target.value);
             });
-            
-            // Clef buttons
-            $('.srt-btn-option[data-clef]').on('click', (e) => {
-                const clef = $(e.currentTarget).data('clef');
-                this.setClef(clef);
+
+            // CORRECTED: Staff type buttons (HTML uses .srt-staff-btn not .srt-btn-option)
+            $('.srt-staff-btn').on('click', (e) => {
+                const staff = $(e.currentTarget).data('staff');
+                $('.srt-staff-btn').removeClass('active');
+                $(e.currentTarget).addClass('active');
+                this.setClef(staff); // Update clef
+                console.log('🎼 Staff changed:', staff);
             });
-            
-            // Generator type buttons
-            $('.srt-btn-option[data-generator]').on('click', (e) => {
+
+            // CORRECTED: Generator type buttons (HTML uses .srt-generator-btn)
+            $('.srt-generator-btn').on('click', (e) => {
                 const generator = $(e.currentTarget).data('generator');
+                $('.srt-generator-btn').removeClass('active');
+                $(e.currentTarget).addClass('active');
                 this.setGeneratorType(generator);
+                console.log('🎲 Generator changed:', generator);
+            });
+
+            // CORRECTED: Key signature buttons (HTML uses .srt-key-btn)
+            $('.srt-key-btn').on('click', (e) => {
+                const key = $(e.currentTarget).data('key');
+                $('.srt-key-btn').removeClass('active');
+                $(e.currentTarget).addClass('active');
+                this.setKeySignature(key);
+                console.log('🎹 Key changed:', key);
+            });
+
+            // ADDED: Notes per chord slider
+            $('#srtNotesSlider').on('input', (e) => {
+                const value = parseInt(e.target.value);
+                $('#srtNotesValue').text(value);
+                this.userSettings.notes_count = value;
+                this.generateInitialNotes(); // Regenerate with new count
+                console.log('🎵 Notes per chord:', value);
+            });
+
+            // ADDED: Hands slider
+            $('#srtHandsSlider').on('input', (e) => {
+                const value = parseInt(e.target.value);
+                $('#srtHandsValue').text(value);
+                this.userSettings.hands_count = value;
+                console.log('🙌 Hands:', value);
             });
             
             // Key signature selector

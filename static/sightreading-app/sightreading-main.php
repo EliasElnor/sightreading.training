@@ -565,6 +565,12 @@ class PianoMode_SightReading_Game {
 
                 <!-- Settings Panel (Left - STARTS OFF-SCREEN) -->
                 <div class="srt-panel srt-panel-left srt-settings-panel" id="srtSettingsPanel" aria-hidden="true">
+                    <!-- Chevron button to close panel -->
+                    <button class="srt-panel-chevron srt-panel-chevron-left" id="srtSettingsChevron" title="Close">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                        </svg>
+                    </button>
                     <div class="srt-panel-header">
                         <h3>Settings</h3>
                         <button class="srt-panel-close" id="srtSettingsPanelClose">×</button>
@@ -688,6 +694,12 @@ class PianoMode_SightReading_Game {
                 <!-- Statistics Panel (Right) -->
                 <!-- Stats Panel (Right - HIDDEN BY DEFAULT) -->
                 <div class="srt-panel srt-panel-right srt-statistics-panel" id="srtStatsPanel" aria-hidden="true">
+                    <!-- Chevron button to close panel -->
+                    <button class="srt-panel-chevron srt-panel-chevron-right" id="srtStatsChevron" title="Close">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
+                        </svg>
+                    </button>
                     <div class="srt-panel-header">
                         <h3>Statistics</h3>
                         <button class="srt-panel-close" id="srtStatsPanelClose">×</button>
