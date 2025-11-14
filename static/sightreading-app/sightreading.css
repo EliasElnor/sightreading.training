@@ -170,23 +170,26 @@ body .srt-container {
     left: 0 !important;
     right: 0 !important;
     padding: 0 !important;
+    min-height: 100vh;
 }
 
 /* =====================================================
    LOADING SCREEN
    ===================================================== */
 
+/* Loading screen does NOT cover WordPress site header - only covers app container */
 .srt-loading-screen {
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
+    min-height: 100vh;
     background: linear-gradient(135deg, var(--srt-black) 0%, var(--srt-black-light) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 999999 !important;
+    z-index: var(--srt-z-loading);
     animation: fadeIn 0.3s ease-out;
 }
 

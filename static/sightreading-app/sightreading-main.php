@@ -372,7 +372,8 @@ class PianoMode_SightReading_Game {
             </script>
 
             <!-- Loading Screen with Progress Bar and Let's Play Button -->
-            <div class="srt-loading-screen" id="srtLoadingScreen" style="position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; width: 100vw !important; height: 100vh !important; background: linear-gradient(135deg, #0B0B0B 0%, #1A1A1A 100%) !important; display: flex !important; align-items: center !important; justify-content: center !important; z-index: 999999 !important; visibility: visible !important; opacity: 1 !important;">
+            <!-- NOTE: Loading screen does NOT cover WordPress site header - only covers app area -->
+            <div class="srt-loading-screen" id="srtLoadingScreen">
                 <div class="srt-loader" style="text-align: center; max-width: 700px; padding: 40px; background: rgba(11, 11, 11, 0.95); border-radius: 20px; box-shadow: 0 10px 50px rgba(0,0,0,0.8);">
                     <div class="srt-loader-logo" style="margin: 0 auto 30px; text-align: center;">
                         <img src="https://pianomode.com/wp-content/uploads/2025/11/cropped-ChatGPT-Image-Nov-10-2025-01_18_37-AM.png" alt="PianoMode" class="srt-logo-img" style="max-width: 200px; height: auto;">
@@ -505,7 +506,7 @@ class PianoMode_SightReading_Game {
                     <div class="srt-toolbar-section srt-tempo-section">
                         <label class="srt-toolbar-label">Tempo</label>
                         <div class="srt-tempo-control">
-                            <input type="range" id="srtTempoSlider" class="srt-slider" min="40" max="200" value="100" step="5">
+                            <input type="range" id="srtTempoSlider" class="srt-slider" min="10" max="200" value="100" step="5">
                             <div class="srt-tempo-display">
                                 <span id="srtTempoValue">100</span>
                                 <span class="srt-tempo-unit">BPM</span>
