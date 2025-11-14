@@ -1828,12 +1828,22 @@
         }
         
         showMetronomeBeat() {
-            // Visual metronome indicator
-            const indicator = $('<div class="srt-metronome-beat"></div>');
-            $('#srtMetronomeBtn').append(indicator);
-            
+            // Visual metronome indicator - pulse the button icon
+            const btn = $('#srtMetronomeBtn');
+            const icon = btn.find('.srt-metronome-icon');
+
+            // Add pulsing class
+            icon.addClass('srt-metronome-pulse');
+
+            // Remove after animation completes
             setTimeout(() => {
-                indicator.remove();
+                icon.removeClass('srt-metronome-pulse');
+            }, 150);
+
+            // Also flash the button background briefly for stronger feedback
+            btn.addClass('srt-metronome-flash');
+            setTimeout(() => {
+                btn.removeClass('srt-metronome-flash');
             }, 100);
         }
         
@@ -2650,21 +2660,26 @@
         }
         
         playMetronomeTick(isDownbeat) {
-            const osc = this.context.createOscillator();
-            const envelope = this.context.createGain();
-            
-            osc.frequency.value = isDownbeat ? 1000 : 800;
-            osc.type = 'sine';
-            
-            osc.connect(envelope);
-            envelope.connect(this.metronomeGain);
-            
-            const now = this.context.currentTime;
-            envelope.gain.setValueAtTime(1, now);
-            envelope.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-            
-            osc.start(now);
-            osc.stop(now + 0.1);
+            // Create metronome synth if not exists
+            if (!this.metronomeSynth) {
+                this.metronomeSynth = new Tone.MembraneSynth({
+                    pitchDecay: 0.008,
+                    octaves: 2,
+                    envelope: {
+                        attack: 0.001,
+                        decay: 0.05,
+                        sustain: 0,
+                        release: 0.05
+                    }
+                }).toDestination();
+                this.metronomeSynth.volume.value = -5;
+            }
+
+            // Play different pitches for downbeat vs other beats
+            const note = isDownbeat ? 'C5' : 'C4';
+            const duration = '32n'; // Very short note
+
+            this.metronomeSynth.triggerAttackRelease(note, duration, Tone.now());
         }
         
         stopMetronome() {
