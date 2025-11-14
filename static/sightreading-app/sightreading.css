@@ -352,10 +352,11 @@ body .srt-container {
     width: 100%;
     background: linear-gradient(90deg, var(--srt-black) 0%, var(--srt-black-light) 100%);
     border-bottom: 3px solid var(--srt-gold);
-    padding: var(--srt-spacing-lg) var(--srt-spacing-xl);
+    padding: var(--srt-spacing-md) var(--srt-spacing-xl); /* Reduced from lg to md */
+    padding-top: 12px; /* Slightly lower */
     position: sticky;
     top: 0;
-    z-index: var(--srt-z-sticky);
+    z-index: 10000; /* Above panels */
     box-shadow: var(--srt-shadow-xl);
 }
 
