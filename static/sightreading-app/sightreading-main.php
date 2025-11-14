@@ -515,11 +515,11 @@ class PianoMode_SightReading_Game {
 
                     <!-- Metronome -->
                     <div class="srt-toolbar-section srt-metronome-section">
-                        <button class="srt-metronome-btn" id="srtMetronomeBtn" title="Metronome">
-                            <svg class="srt-metronome-icon" viewBox="0 0 24 24">
+                        <button class="srt-btn srt-btn-metronome" id="srtMetronomeBtn" title="Toggle Metronome">
+                            <svg class="srt-icon srt-metronome-icon" viewBox="0 0 24 24">
                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm1-13h-2v6l5.25 3.15.75-1.23L13 12.5V7z"/>
                             </svg>
-                            <span class="srt-metronome-text">♩</span>
+                            <span class="srt-metronome-text">Metronome</span>
                         </button>
                     </div>
 

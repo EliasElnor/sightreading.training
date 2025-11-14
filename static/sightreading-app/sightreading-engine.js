@@ -2314,6 +2314,18 @@
 
             console.log('✅ Tone.js version:', Tone.version);
 
+            // Initialize Web Audio API (for metronome)
+            this.context = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Create gain nodes
+            this.masterGain = this.context.createGain();
+            this.masterGain.gain.value = 0.75;
+            this.masterGain.connect(this.context.destination);
+
+            this.metronomeGain = this.context.createGain();
+            this.metronomeGain.gain.value = 0.5;
+            this.metronomeGain.connect(this.masterGain);
+
             // Start Tone.js audio context
             Tone.start().then(() => {
                 console.log('✅ Tone.js audio context started');
@@ -2337,6 +2349,9 @@
 
             // Set volume
             this.pianoSampler.volume.value = -10; // -10dB
+
+            // Enable metronome
+            this.metronome = true;
 
             console.log('✅ Audio initialization complete');
         }
