@@ -38,6 +38,7 @@
             this.mode = 'free'; // 'free', 'wait', or 'scroll'
             this.tempo = 100;
             this.freeMode_playedNotes = []; // Notes played in free mode
+            this.scrollPaused = false; // Pause scroll mode on wrong note
             this.score = 0;
             this.streak = 0;
             this.bestStreak = 0;
@@ -608,22 +609,27 @@
          * Update scroll mode
          */
         updateScrollMode(deltaTime) {
+            // Don't scroll if paused due to wrong note
+            if (this.scrollPaused) {
+                return;
+            }
+
             // Calculate scroll speed based on tempo
             const beatsPerSecond = this.tempo / 60;
             const pixelsPerBeat = 100; // Adjust as needed
             const scrollSpeed = (beatsPerSecond * pixelsPerBeat * deltaTime) / 1000;
-            
+
             // Update playhead position
             this.playheadPosition += scrollSpeed;
-            
+
             // Check if notes have passed the playhead
             this.checkNotesInScrollMode();
-            
+
             // Generate new notes if needed
             if (this.shouldGenerateMoreNotes()) {
                 this.generateMoreNotes();
             }
-            
+
             // Update playhead visual
             this.updatePlayheadVisual();
         }
@@ -940,7 +946,7 @@
                 const notePosition = this.getNotePosition(note);
                 return Math.abs(notePosition - this.playheadPosition) < playheadRange;
             });
-            
+
             // Check if any note matches
             let matchFound = false;
             for (const note of notesInRange) {
@@ -948,12 +954,35 @@
                     this.handleCorrectNote(note);
                     note.played = true;
                     matchFound = true;
+                    // Resume scrolling if it was paused
+                    this.scrollPaused = false;
                     break;
                 }
             }
-            
+
             if (!matchFound && notesInRange.length > 0) {
                 this.handleIncorrectNote(playedNote, notesInRange[0]);
+                // PAUSE SCROLLING on wrong note
+                this.scrollPaused = true;
+                // Show visual indicator
+                this.showScrollPausedIndicator();
+            }
+        }
+
+        /**
+         * Show visual indicator that scroll is paused
+         */
+        showScrollPausedIndicator() {
+            // Flash the playhead red or show warning message
+            if (this.renderer && this.renderer.ctx) {
+                // Add temporary visual feedback
+                const canvasWidth = this.canvas.width / (window.devicePixelRatio || 1);
+                const x = canvasWidth / 3;
+
+                this.renderer.ctx.save();
+                this.renderer.ctx.fillStyle = 'rgba(244, 67, 54, 0.3)';
+                this.renderer.ctx.fillRect(x - 20, 0, 40, this.canvas.height);
+                this.renderer.ctx.restore();
             }
         }
         
