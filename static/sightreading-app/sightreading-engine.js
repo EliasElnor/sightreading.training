@@ -35,8 +35,9 @@
             this.currentNoteIndex = 0;
             this.isPlaying = false;
             this.isPaused = false;
-            this.mode = 'wait'; // 'wait' or 'scroll'
+            this.mode = 'free'; // 'free', 'wait', or 'scroll'
             this.tempo = 100;
+            this.freeMode_playedNotes = []; // Notes played in free mode
             this.score = 0;
             this.streak = 0;
             this.bestStreak = 0;
@@ -840,30 +841,69 @@
          * Handle note input
          */
         handleNoteInput(note, velocity = 127, source = 'keyboard') {
-            if (!this.isPlaying || this.isPaused) {
-                // Allow playing notes even when not in game
-                this.audio.playNote(note, velocity);
-                this.piano.highlightKey(note);
-                return;
-            }
-            
             // Play the note
             this.audio.playNote(note, velocity);
             this.piano.highlightKey(note);
-            
-            // Check if correct note
-            if (this.mode === 'wait') {
+
+            // Handle based on mode
+            if (this.mode === 'free') {
+                // Free mode: add note to staff
+                this.handleFreeMode(note);
+            } else if (!this.isPlaying || this.isPaused) {
+                // Other modes when not playing: just play sound
+                return;
+            } else if (this.mode === 'wait') {
                 this.checkNoteInWaitMode(note);
-            } else {
+            } else if (this.mode === 'scroll') {
                 this.checkNoteInScrollMode(note);
             }
-            
+
             // Log note input
             this.logEvent('note_input', {
                 note: note,
                 velocity: velocity,
-                source: source
+                source: source,
+                mode: this.mode
             });
+        }
+
+        /**
+         * Handle note in free mode - add to staff
+         */
+        handleFreeMode(playedMidi) {
+            // Calculate position for the new note
+            const beatPosition = this.freeMode_playedNotes.length * 0.5; // Space notes out
+            const measureNumber = Math.floor(beatPosition / 4);
+            const beatInMeasure = beatPosition % 4;
+
+            // Create note object
+            const noteObj = {
+                midi: playedMidi,
+                duration: 'quarter',
+                measure: measureNumber,
+                beat: beatInMeasure,
+                played: true, // Mark as played (green)
+                timestamp: Date.now()
+            };
+
+            // Add to played notes array
+            this.freeMode_playedNotes.push(noteObj);
+            this.notes.push(noteObj);
+
+            // Auto-scroll if needed
+            if (this.freeMode_playedNotes.length > 16) {
+                // Keep only last 16 notes visible
+                this.notes = this.freeMode_playedNotes.slice(-16);
+                // Renumber measures for the visible notes
+                this.notes.forEach((note, index) => {
+                    const beatPos = index * 0.5;
+                    note.measure = Math.floor(beatPos / 4);
+                    note.beat = beatPos % 4;
+                });
+            }
+
+            // Render immediately
+            this.render();
         }
         
         /**
@@ -1330,10 +1370,24 @@
             this.mode = mode;
             $('.srt-mode-btn').removeClass('active');
             $(`.srt-mode-btn[data-mode="${mode}"]`).addClass('active');
-            
-            // Reset for new mode
-            if (this.isPlaying) {
-                this.reset();
+
+            // Handle mode-specific setup
+            if (mode === 'free') {
+                // Free mode: empty staff, notes appear as played
+                this.notes = [];
+                this.freeMode_playedNotes = [];
+                this.isPlaying = false; // Free mode doesn't need "play" button
+                $('#srtPlayBtn').hide();
+                $('#srtPauseBtn').hide();
+                $('#srtStopBtn').hide();
+            } else {
+                // Wait/Scroll modes: generate notes
+                $('#srtPlayBtn').show();
+                if (this.isPlaying) {
+                    this.reset();
+                } else {
+                    this.generateInitialNotes();
+                }
             }
         }
         
