@@ -388,7 +388,35 @@
                 $('#srtHandsValue').text(value);
                 this.userSettings.hands_count = value;
             });
-            
+
+            // Display Note Names checkbox
+            $('#srtDisplayNotes').on('change', (e) => {
+                this.userSettings.display_notes = e.target.checked;
+                this.saveSettings();
+            });
+
+            // Notation System select
+            $('#srtNotationSystem').on('change', (e) => {
+                this.userSettings.notation_system = e.target.value;
+                if (this.renderer) {
+                    this.renderer.setNoteNameSystem(e.target.value);
+                }
+                this.saveSettings();
+            });
+
+            // MIDI Refresh button
+            $('#srtMidiRefreshBtn').on('click', () => {
+                if (this.midiManager) {
+                    this.midiManager.refreshDevices();
+                }
+            });
+
+            // MIDI Through checkbox
+            $('#srtMidiThrough').on('change', (e) => {
+                this.userSettings.midi_through = e.target.checked;
+                this.saveSettings();
+            });
+
             // Key signature selector
             $('#srtKeySignature').on('change', (e) => {
                 this.setKeySignature(e.target.value);
@@ -1496,27 +1524,33 @@
             this.staffSettings.clef = clef;
             $('.srt-btn-option[data-clef]').removeClass('active');
             $(`.srt-btn-option[data-clef="${clef}"]`).addClass('active');
-            
+
             // Re-render staff
             if (this.renderer) {
                 this.renderer.setClef(clef);
+                this.render(); // Trigger re-render to show new clef
             }
+            this.saveSettings();
         }
         
         setGeneratorType(type) {
             this.userSettings.generator_type = type;
             $('.srt-btn-option[data-generator]').removeClass('active');
             $(`.srt-btn-option[data-generator="${type}"]`).addClass('active');
-            
+
             // Generate new notes
             this.generateInitialNotes();
+            this.saveSettings();
         }
         
         setKeySignature(key) {
             this.staffSettings.keySignature = key;
             if (this.renderer) {
                 this.renderer.setKeySignature(key);
+                this.render(); // Trigger re-render to show new key signature
             }
+            this.generateInitialNotes(); // Regenerate notes for new key
+            this.saveSettings();
         }
         
         setTimeSignature(time) {
