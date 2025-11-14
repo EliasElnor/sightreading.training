@@ -392,14 +392,22 @@
             // Display Note Names checkbox
             $('#srtDisplayNotes').on('change', (e) => {
                 this.userSettings.display_notes = e.target.checked;
+                if (this.renderer) {
+                    // If checked, use the selected notation system; if unchecked, use 'none'
+                    const system = e.target.checked ? this.userSettings.notation_system : 'none';
+                    this.renderer.setNoteNameSystem(system);
+                    this.render(); // Re-render to show/hide note names
+                }
                 this.saveSettings();
             });
 
             // Notation System select
             $('#srtNotationSystem').on('change', (e) => {
                 this.userSettings.notation_system = e.target.value;
-                if (this.renderer) {
+                if (this.renderer && this.userSettings.display_notes) {
+                    // Only update if display_notes is enabled
                     this.renderer.setNoteNameSystem(e.target.value);
+                    this.render(); // Re-render to show note names in new system
                 }
                 this.saveSettings();
             });
@@ -555,6 +563,13 @@
          */
         setupRenderer() {
             this.renderer = new StaffRenderer(this);
+
+            // Initialize note name display based on user settings
+            if (this.userSettings.display_notes) {
+                this.renderer.setNoteNameSystem(this.userSettings.notation_system || 'international');
+            } else {
+                this.renderer.setNoteNameSystem('none');
+            }
         }
         
         /**
@@ -3501,12 +3516,20 @@
         drawNoteName(x, y, note) {
             const ctx = this.ctx;
             const noteName = this.getNoteNameFromMidi(note.midi);
-            
+
             ctx.save();
-            ctx.font = '10px Arial';
-            ctx.fillStyle = '#666';
+            ctx.font = 'bold 11px Arial';
             ctx.textAlign = 'center';
+
+            // Draw background for better readability
+            ctx.fillStyle = 'rgba(11, 11, 11, 0.7)';
+            const textWidth = ctx.measureText(noteName).width;
+            ctx.fillRect(x - textWidth/2 - 3, y - 10, textWidth + 6, 14);
+
+            // Draw note name in gold color
+            ctx.fillStyle = '#C59D3A';
             ctx.fillText(noteName, x, y);
+
             ctx.restore();
         }
         
