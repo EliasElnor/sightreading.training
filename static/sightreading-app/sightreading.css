@@ -623,13 +623,23 @@ body .srt-container {
     align-items: center;
     gap: var(--srt-spacing-sm);
     padding: var(--srt-spacing-xs) var(--srt-spacing-md);
+    text-decoration: none;
+    background: rgba(197, 157, 58, 0.1);
+    border-color: var(--srt-gold);
 }
 
-.srt-btn-account img {
+.srt-btn-account:hover {
+    background: rgba(197, 157, 58, 0.2);
+    transform: translateY(-2px);
+}
+
+.srt-btn-account img,
+.srt-account-avatar {
     width: 32px;
     height: 32px;
     border-radius: 50%;
     border: 2px solid var(--srt-gold);
+    object-fit: cover;
 }
 
 /* Icons */
@@ -948,31 +958,48 @@ body .srt-container {
 }
 
 /* =====================================================
-   LEFT PANEL (SETTINGS)
+   LEFT PANEL (SETTINGS) & RIGHT PANEL (STATS)
    ===================================================== */
 
 .srt-panel {
-    background: var(--srt-black-light);
-    border: 1px solid var(--srt-gray-800);
+    /* Full screen overlay panels */
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 500px; /* Wider panels */
+    max-width: 90vw;
+    background: rgba(11, 11, 11, 0.95); /* Semi-transparent black */
+    backdrop-filter: blur(10px); /* Blur background */
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(197, 157, 58, 0.3); /* Gold border semi-transparent */
     overflow-y: auto;
-    transition: var(--srt-transition-base);
-    position: relative;
+    overflow-x: hidden;
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.3s ease;
+    z-index: 9999; /* Above everything */
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.8);
+    display: none; /* Hidden by default */
 }
 
 .srt-panel-left {
-    width: 320px;
-    border-right: 2px solid var(--srt-gold);
-    transform: translateX(-320px);
-    position: absolute;
     left: 0;
-    top: 0;
-    bottom: 0;
-    z-index: var(--srt-z-panel);
+    border-right: 2px solid var(--srt-gold);
+    transform: translateX(-100%); /* Start off-screen left */
 }
 
 .srt-panel-left.open {
-    transform: translateX(0);
-    box-shadow: var(--srt-shadow-xl);
+    transform: translateX(0); /* Slide in from left */
+    display: block;
+}
+
+.srt-panel-right {
+    right: 0;
+    border-left: 2px solid var(--srt-gold);
+    transform: translateX(100%); /* Start off-screen right */
+}
+
+.srt-panel-right.open {
+    transform: translateX(0); /* Slide in from right */
+    display: block;
 }
 
 .srt-panel-header {
@@ -1241,6 +1268,8 @@ body .srt-container {
     position: relative;
     overflow: hidden;
     margin-bottom: var(--srt-spacing-xl);
+    min-height: 400px; /* CRITICAL: Minimum height for staff visibility */
+    height: 400px; /* Fixed height for consistent display */
 }
 
 .srt-score-canvas {
@@ -1322,24 +1351,29 @@ body .srt-container {
 .srt-piano-container {
     background: linear-gradient(135deg, var(--srt-black) 0%, var(--srt-black-light) 100%);
     border-radius: var(--srt-radius-lg);
-    padding: var(--srt-spacing-lg);
+    padding: var(--srt-spacing-xl); /* More padding */
     box-shadow: var(--srt-shadow-xl);
+    max-width: 1400px; /* Maximum width */
+    margin: 0 auto; /* Center horizontally */
 }
 
 .srt-piano-wrapper {
     background: var(--srt-black);
     border-radius: var(--srt-radius-md);
-    padding: var(--srt-spacing-md);
+    padding: var(--srt-spacing-lg); /* More padding */
     margin-bottom: var(--srt-spacing-md);
     overflow-x: auto;
     overflow-y: hidden;
+    display: flex;
+    justify-content: center; /* Center piano keyboard */
 }
 
 .srt-piano-keyboard {
     display: flex;
     position: relative;
-    height: 120px;
+    height: 180px; /* Taller piano keys (was 120px) */
     min-width: max-content;
+    margin: 0 auto; /* Center */
 }
 
 .srt-piano-octave {
@@ -1357,11 +1391,11 @@ body .srt-container {
 }
 
 .srt-piano-key-white {
-    width: 40px;
-    height: 120px;
+    width: 50px; /* Wider keys (was 40px) */
+    height: 180px; /* Match container height */
     background: linear-gradient(to bottom, #fff 0%, #f8f8f8 100%);
     border: 1px solid #ccc;
-    border-radius: 0 0 4px 4px;
+    border-radius: 0 0 5px 5px; /* Slightly more rounded */
     margin-right: 2px;
     z-index: 1;
 }
@@ -1378,10 +1412,10 @@ body .srt-container {
 }
 
 .srt-piano-key-black {
-    width: 28px;
-    height: 80px;
+    width: 34px; /* Wider black keys (was 28px) */
+    height: 120px; /* Taller black keys (was 80px) */
     background: linear-gradient(to bottom, #333 0%, #000 100%);
-    border-radius: 0 0 3px 3px;
+    border-radius: 0 0 4px 4px;
     position: absolute;
     z-index: 2;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
