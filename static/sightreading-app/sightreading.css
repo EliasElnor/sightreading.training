@@ -1323,17 +1323,20 @@ body .srt-container {
     height: 400px; /* Fixed height for consistent display */
 }
 
-/* Staff Container - SAME AS SCORE CONTAINER */
+/* Staff Container - MATCHES PIANO CONTAINER WIDTH */
 .srt-staff-container {
-    flex: 1;
     background: var(--srt-white);
     border-radius: var(--srt-radius-lg);
     box-shadow: var(--srt-shadow-xl);
     position: relative;
-    overflow: hidden;
-    margin-bottom: var(--srt-spacing-xl);
-    min-height: 400px !important; /* Force height */
-    height: 400px !important; /* Force height */
+    overflow-x: auto; /* Allow horizontal scroll if needed */
+    overflow-y: hidden;
+    margin: 0 auto var(--srt-spacing-xl); /* Center like piano */
+    min-height: 300px; /* Reduced for better screen fit */
+    height: 300px; /* Match piano visibility needs */
+    max-width: 1400px; /* SAME AS PIANO */
+    width: 100%; /* Full width up to max */
+    padding: var(--srt-spacing-lg); /* Match piano padding */
 }
 
 .srt-score-canvas {
@@ -1342,12 +1345,12 @@ body .srt-container {
     display: block;
 }
 
-/* Staff Canvas - FORCE 400px HEIGHT */
+/* Staff Canvas - RESPONSIVE HEIGHT */
 .srt-staff-canvas,
 #srtScoreCanvas {
     width: 100% !important;
     height: 100% !important;
-    min-height: 400px !important;
+    min-height: 280px !important; /* Reduced for better fit */
     display: block !important;
 }
 
@@ -1424,9 +1427,10 @@ body .srt-container {
 .srt-piano-container {
     background: linear-gradient(135deg, var(--srt-black) 0%, var(--srt-black-light) 100%);
     border-radius: var(--srt-radius-lg);
-    padding: var(--srt-spacing-xl); /* More padding */
+    padding: var(--srt-spacing-lg); /* Padding */
     box-shadow: var(--srt-shadow-xl);
-    max-width: 1400px; /* Maximum width */
+    max-width: 1400px; /* Maximum width - MATCHES STAFF */
+    width: 100%; /* Full width up to max */
     margin: 0 auto; /* Center horizontally */
 }
 
