@@ -2817,10 +2817,10 @@
             this.engine = engine;
             this.ctx = engine.ctx;
             this.canvas = engine.canvas;
-            this.staffY = 100;
-            this.staffSpacing = 12;
+            this.staffY = 80; // Raised to give more room for grand staff
+            this.staffSpacing = 10; // Slightly tighter for better readability
             this.measureWidth = 200;
-            this.clef = 'treble';
+            this.clef = 'grand'; // DEFAULT TO GRAND STAFF (treble + bass)
             this.keySignature = 'C';
             this.timeSignature = '4/4';
             this.noteNameSystem = 'none';
@@ -3141,24 +3141,76 @@
         }
         
         getNoteY(note) {
-            // Calculate Y position based on MIDI note number
-            const notePositions = {
-                60: this.staffY + 60,  // Middle C
-                62: this.staffY + 54,  // D
-                64: this.staffY + 48,  // E
-                65: this.staffY + 42,  // F
-                67: this.staffY + 36,  // G
-                69: this.staffY + 30,  // A
-                71: this.staffY + 24,  // B
-                72: this.staffY + 18   // C
+            // For grand staff: treble staff is at this.staffY, bass staff is at this.staffY + 100
+            // Middle C (MIDI 60) is at the ledger line between the two staves
+
+            const midi = note.midi;
+
+            // Map of note positions (0 = C, 2 = D, 4 = E, 5 = F, 7 = G, 9 = A, 11 = B)
+            const noteInOctave = midi % 12;
+            const octave = Math.floor(midi / 12);
+
+            // Spacing between notes (half the staff spacing)
+            const halfSpace = this.staffSpacing / 2;
+
+            // Calculate position relative to Middle C (MIDI 60 = C4)
+            // Each semitone that is a natural note moves one half-space
+            // We need to calculate the diatonic position
+
+            // Notes per octave in diatonic scale
+            const diatonicMap = {
+                0: 0,   // C
+                2: 1,   // D
+                4: 2,   // E
+                5: 3,   // F
+                7: 4,   // G
+                9: 5,   // A
+                11: 6   // B
             };
-            
-            // Adjust for octaves
-            const octaveOffset = Math.floor((note.midi - 60) / 12) * -42;
-            const noteInOctave = note.midi % 12;
-            const baseNote = 60 + noteInOctave;
-            
-            return (notePositions[baseNote] || this.staffY + 30) + octaveOffset;
+
+            // Get diatonic position for sharps/flats
+            let diatonicPos;
+            if (diatonicMap.hasOwnProperty(noteInOctave)) {
+                diatonicPos = diatonicMap[noteInOctave];
+            } else {
+                // For sharps/flats, use the position of the next natural note down
+                const naturalBelow = [0, 0, 2, 2, 4, 5, 5, 7, 7, 9, 9, 11][noteInOctave];
+                diatonicPos = diatonicMap[naturalBelow];
+            }
+
+            // Calculate distance from Middle C (C4, MIDI 60)
+            const c4_octave = 4;
+            const octaveDiff = octave - c4_octave;
+            const totalDiatonicPos = diatonicPos + (octaveDiff * 7);
+
+            if (this.clef === 'grand') {
+                // Grand staff: Middle C is between the staves
+                // Treble staff top line = E5 (MIDI 76)
+                // Treble staff bottom line = E4 (MIDI 64)
+                // Bass staff top line = A3 (MIDI 57)
+                // Bass staff bottom line = E2 (MIDI 40)
+
+                const trebleY = this.staffY;
+                const bassY = this.staffY + 100;
+
+                // Middle C (MIDI 60) should be at the ledger line between staves
+                const middleC_y = trebleY + (5 * this.staffSpacing); // One ledger line below treble staff
+
+                // Each diatonic step is half a staff spacing
+                const y = middleC_y - (totalDiatonicPos * halfSpace);
+
+                return y;
+            } else if (this.clef === 'bass') {
+                // Bass clef: F3 (MIDI 53) is on the 4th line
+                const f3_diatonic = 3 + (-1 * 7); // F in octave 3
+                const distanceFromF3 = totalDiatonicPos - f3_diatonic;
+                return this.staffY + (this.staffSpacing * 1.5) + (distanceFromF3 * halfSpace);
+            } else {
+                // Treble clef: B4 (MIDI 71) is on the middle line
+                const b4_diatonic = 6; // B in octave 4 (C4 = 0)
+                const distanceFromB4 = totalDiatonicPos - b4_diatonic;
+                return this.staffY + (this.staffSpacing * 2) + (distanceFromB4 * halfSpace);
+            }
         }
         
         drawLedgerLines(x, y) {
