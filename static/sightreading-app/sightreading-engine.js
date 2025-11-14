@@ -1867,6 +1867,22 @@
                     this.setOctaveRange(parseInt(e.target.value));
                 });
             }
+
+            // Listen for note names toggle
+            const noteNamesCheckbox = document.getElementById('srtPianoNoteNames');
+            if (noteNamesCheckbox) {
+                noteNamesCheckbox.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        this.container.parentElement.classList.add('srt-show-key-names');
+                    } else {
+                        this.container.parentElement.classList.remove('srt-show-key-names');
+                    }
+                });
+                // Initialize state
+                if (noteNamesCheckbox.checked) {
+                    this.container.parentElement.classList.add('srt-show-key-names');
+                }
+            }
         }
 
         setOctaveRange(octaveCount) {
@@ -1927,6 +1943,13 @@
                     label.textContent = noteName;
                     key.appendChild(label);
                 }
+
+                // Add note name (hidden by default, shown when enabled)
+                const noteNameElem = document.createElement('span');
+                noteNameElem.className = 'srt-key-note-name';
+                // Remove octave number for cleaner display
+                noteNameElem.textContent = noteName.replace(/\d+$/, '');
+                key.appendChild(noteNameElem);
 
                 wrapper.appendChild(key);
                 this.container.appendChild(wrapper);
@@ -2429,27 +2452,105 @@
             Tone.start().then(() => {
             });
 
-            // Create Tone.js Sampler with simple sine waves for now
-            // In production, you would load actual piano samples
-            this.pianoSampler = new Tone.Sampler({
-                urls: {
-                    C4: "C4.mp3",
-                    "D#4": "Ds4.mp3",
-                    "F#4": "Fs4.mp3",
-                    A4: "A4.mp3",
-                },
-                release: 1,
-                baseUrl: "https://tonejs.github.io/audio/salamander/",
-                onload: () => {
-                }
-            }).toDestination();
-
-            // Set volume
-            this.pianoSampler.volume.value = -10; // -10dB
+            // Load initial sound (Grand Piano)
+            this.loadSound('salamander');
 
             // Enable metronome
             this.metronome = true;
 
+            // Listen for sound changes
+            const soundSelect = document.getElementById('srtSoundSelect');
+            if (soundSelect) {
+                soundSelect.addEventListener('change', (e) => {
+                    this.loadSound(e.target.value);
+                });
+            }
+
+        }
+
+        loadSound(soundType) {
+            // Dispose old sampler if exists
+            if (this.pianoSampler) {
+                this.pianoSampler.dispose();
+            }
+
+            switch (soundType) {
+                case 'salamander':
+                    // Grand Piano (Salamander samples)
+                    this.pianoSampler = new Tone.Sampler({
+                        urls: {
+                            C4: "C4.mp3",
+                            "D#4": "Ds4.mp3",
+                            "F#4": "Fs4.mp3",
+                            A4: "A4.mp3",
+                        },
+                        release: 1,
+                        baseUrl: "https://tonejs.github.io/audio/salamander/",
+                    }).toDestination();
+                    this.pianoSampler.volume.value = -10;
+                    break;
+
+                case 'electric':
+                    // Electric Piano (using Synth with electric piano settings)
+                    this.pianoSampler = new Tone.PolySynth(Tone.FMSynth, {
+                        harmonicity: 1,
+                        modulationIndex: 12.22,
+                        oscillator: { type: "sine" },
+                        envelope: {
+                            attack: 0.001,
+                            decay: 2.0,
+                            sustain: 0.1,
+                            release: 2.0
+                        },
+                        modulation: { type: "square" },
+                        modulationEnvelope: {
+                            attack: 0.002,
+                            decay: 0.2,
+                            sustain: 0,
+                            release: 0.2
+                        }
+                    }).toDestination();
+                    this.pianoSampler.volume.value = -8;
+                    break;
+
+                case 'organ':
+                    // Organ (using FatOscillator)
+                    this.pianoSampler = new Tone.PolySynth(Tone.Synth, {
+                        oscillator: {
+                            type: "fatsawtooth",
+                            count: 3,
+                            spread: 30
+                        },
+                        envelope: {
+                            attack: 0.01,
+                            decay: 0.1,
+                            sustain: 0.8,
+                            release: 0.4
+                        }
+                    }).toDestination();
+                    this.pianoSampler.volume.value = -12;
+                    break;
+
+                case 'synth':
+                    // Synth (bright synth sound)
+                    this.pianoSampler = new Tone.PolySynth(Tone.Synth, {
+                        oscillator: {
+                            type: "triangle"
+                        },
+                        envelope: {
+                            attack: 0.005,
+                            decay: 0.1,
+                            sustain: 0.3,
+                            release: 1.0
+                        }
+                    }).toDestination();
+                    this.pianoSampler.volume.value = -10;
+                    break;
+
+                default:
+                    // Fallback to Grand Piano
+                    this.loadSound('salamander');
+            }
         }
         
         loadDefaultSounds() {
