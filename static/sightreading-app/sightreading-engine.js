@@ -1334,18 +1334,18 @@
             const isOpen = $panel.hasClass('open');
 
             if (isOpen) {
-                $panel.removeClass('open').css('display', 'none');
+                $panel.removeClass('open');
                 console.log('🔧 Settings panel closed');
             } else {
                 // Close stats panel if open
                 this.closeStatsPanel();
-                $panel.addClass('open').css('display', 'block');
+                $panel.addClass('open');
                 console.log('🔧 Settings panel opened');
             }
         }
 
         closeSettingsPanel() {
-            $('#srtSettingsPanel').removeClass('open').css('display', 'none');
+            $('#srtSettingsPanel').removeClass('open');
         }
 
         toggleStatsPanel() {
@@ -1353,18 +1353,18 @@
             const isOpen = $panel.hasClass('open');
 
             if (isOpen) {
-                $panel.removeClass('open').css('display', 'none');
+                $panel.removeClass('open');
                 console.log('📊 Stats panel closed');
             } else {
                 // Close settings panel if open
                 this.closeSettingsPanel();
-                $panel.addClass('open').css('display', 'block');
+                $panel.addClass('open');
                 console.log('📊 Stats panel opened');
             }
         }
 
         closeStatsPanel() {
-            $('#srtStatsPanel').removeClass('open').css('display', 'none');
+            $('#srtStatsPanel').removeClass('open');
         }
         
         setDifficulty(difficulty) {

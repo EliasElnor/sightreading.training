@@ -456,7 +456,20 @@ class PianoMode_SightReading_Game {
                         <?php
                         // My Account button with profile picture
                         $current_user_id = get_current_user_id();
-                        $account_url = $current_user_id > 0 ? get_permalink(get_option('woocommerce_myaccount_page_id')) : wp_login_url();
+
+                        // Get account URL - try WooCommerce first, fallback to /my-account/
+                        if ($current_user_id > 0) {
+                            $wc_account_id = get_option('woocommerce_myaccount_page_id');
+                            if ($wc_account_id) {
+                                $account_url = get_permalink($wc_account_id);
+                            } else {
+                                // Fallback to /my-account/ if WooCommerce not configured
+                                $account_url = home_url('/my-account/');
+                            }
+                        } else {
+                            $account_url = wp_login_url();
+                        }
+
                         $user_display_name = $current_user_id > 0 ? wp_get_current_user()->display_name : 'Account';
                         ?>
                         <a href="<?php echo esc_url($account_url); ?>" class="srt-btn srt-btn-account" id="srtAccountBtn" title="My Account">
@@ -550,8 +563,8 @@ class PianoMode_SightReading_Game {
             <!-- Main Game Area (hidden by default until app starts) -->
             <div class="srt-main-area" id="srtMainArea" style="display: none;">
 
-                <!-- Settings Panel (Left - HIDDEN BY DEFAULT) -->
-                <div class="srt-panel srt-panel-left srt-settings-panel" id="srtSettingsPanel" style="display: none; transform: translateX(-100%);" aria-hidden="true">
+                <!-- Settings Panel (Left - STARTS OFF-SCREEN) -->
+                <div class="srt-panel srt-panel-left srt-settings-panel" id="srtSettingsPanel" aria-hidden="true">
                     <div class="srt-panel-header">
                         <h3>Settings</h3>
                         <button class="srt-panel-close" id="srtSettingsPanelClose">×</button>
@@ -674,7 +687,7 @@ class PianoMode_SightReading_Game {
 
                 <!-- Statistics Panel (Right) -->
                 <!-- Stats Panel (Right - HIDDEN BY DEFAULT) -->
-                <div class="srt-panel srt-panel-right srt-statistics-panel" id="srtStatsPanel" style="display: none; transform: translateX(100%);" aria-hidden="true">
+                <div class="srt-panel srt-panel-right srt-statistics-panel" id="srtStatsPanel" aria-hidden="true">
                     <div class="srt-panel-header">
                         <h3>Statistics</h3>
                         <button class="srt-panel-close" id="srtStatsPanelClose">×</button>
