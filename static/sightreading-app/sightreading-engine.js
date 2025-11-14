@@ -2514,22 +2514,166 @@
             const notes = [];
             const measureCount = 4;
             const beatsPerMeasure = 4;
-            
+            const settings = this.engine.userSettings;
+            const notesPerChord = settings.notes_count || 1;
+
+            // Get key signature scale
+            const keySignature = settings.key_signature || 'C';
+            const scale = this.getScaleForKey(keySignature);
+
+            // Rhythmic patterns for variety
+            const rhythmPatterns = [
+                ['quarter', 'quarter', 'quarter', 'quarter'],
+                ['half', 'quarter', 'quarter'],
+                ['quarter', 'quarter', 'half'],
+                ['quarter', 'eighth', 'eighth', 'quarter', 'quarter'],
+                ['eighth', 'eighth', 'quarter', 'quarter', 'quarter'],
+                ['whole'],
+                ['half', 'half'],
+                ['dotted-half', 'quarter']
+            ];
+
+            let currentMidi = this.getRandomMidiFromScale(scale);
+
             for (let measure = 0; measure < measureCount; measure++) {
-                for (let beat = 0; beat < beatsPerMeasure; beat++) {
-                    const note = {
-                        midi: this.getRandomMidi(),
-                        duration: 'quarter',
-                        measure: measure,
-                        beat: beat,
-                        staff: Math.random() > 0.5 ? 'treble' : 'bass'
-                    };
-                    
-                    notes.push(note);
+                // Pick a rhythmic pattern for this measure
+                const pattern = rhythmPatterns[Math.floor(Math.random() * rhythmPatterns.length)];
+                let beatPosition = 0;
+
+                pattern.forEach(duration => {
+                    if (notesPerChord === 1) {
+                        // Single note melody with step-wise motion
+                        const note = {
+                            midi: currentMidi,
+                            duration: duration,
+                            measure: measure,
+                            beat: beatPosition,
+                            staff: currentMidi >= 60 ? 'treble' : 'bass',
+                            accidental: this.getAccidental(currentMidi, keySignature)
+                        };
+                        notes.push(note);
+
+                        // Move to next note with melodic motion (prefer steps, occasional leaps)
+                        currentMidi = this.getNextMelodicNote(currentMidi, scale);
+                    } else {
+                        // Chord/interval - multiple notes simultaneously
+                        const chordNotes = this.generateChordNotes(currentMidi, scale, notesPerChord);
+                        chordNotes.forEach(midi => {
+                            notes.push({
+                                midi: midi,
+                                duration: duration,
+                                measure: measure,
+                                beat: beatPosition,
+                                staff: midi >= 60 ? 'treble' : 'bass',
+                                accidental: this.getAccidental(midi, keySignature),
+                                chord: true
+                            });
+                        });
+
+                        currentMidi = chordNotes[0]; // Root becomes new starting point
+                    }
+
+                    // Advance beat position based on duration
+                    beatPosition += this.getDurationBeats(duration);
+                });
+            }
+
+            return notes;
+        }
+
+        getScaleForKey(key) {
+            // Major scale pattern: W-W-H-W-W-W-H (whole-whole-half-whole-whole-whole-half)
+            const majorPattern = [0, 2, 4, 5, 7, 9, 11, 12];
+
+            const keyToRoot = {
+                'C': 60, 'G': 67, 'D': 62, 'A': 69, 'E': 64, 'B': 71, 'F#': 66,
+                'F': 65, 'Bb': 70, 'Eb': 63, 'Ab': 68, 'Db': 61, 'Gb': 66
+            };
+
+            const root = keyToRoot[key] || 60;
+
+            // Build scale across multiple octaves
+            const scale = [];
+            for (let octave = -2; octave <= 2; octave++) {
+                majorPattern.forEach(interval => {
+                    const midi = root + (octave * 12) + interval;
+                    if (midi >= 36 && midi <= 84) { // Piano range A1-C6
+                        scale.push(midi);
+                    }
+                });
+            }
+
+            return scale.sort((a, b) => a - b);
+        }
+
+        getRandomMidiFromScale(scale) {
+            return scale[Math.floor(Math.random() * scale.length)];
+        }
+
+        getNextMelodicNote(currentMidi, scale) {
+            const currentIndex = scale.indexOf(currentMidi);
+            if (currentIndex === -1) return currentMidi;
+
+            // 70% chance step-wise (up or down 1-2 scale degrees)
+            // 30% chance leap (3-5 scale degrees)
+            const isStep = Math.random() < 0.7;
+            const direction = Math.random() < 0.5 ? 1 : -1;
+
+            let interval;
+            if (isStep) {
+                interval = direction * (Math.floor(Math.random() * 2) + 1); // 1 or 2 steps
+            } else {
+                interval = direction * (Math.floor(Math.random() * 3) + 3); // 3-5 steps (leap)
+            }
+
+            let newIndex = currentIndex + interval;
+
+            // Keep within reasonable range
+            newIndex = Math.max(0, Math.min(scale.length - 1, newIndex));
+
+            return scale[newIndex];
+        }
+
+        generateChordNotes(rootMidi, scale, count) {
+            const notes = [rootMidi];
+            let currentIndex = scale.indexOf(rootMidi);
+
+            // Build chord by adding thirds (2 scale degrees up)
+            for (let i = 1; i < count; i++) {
+                currentIndex += 2; // Skip one scale degree (build in thirds)
+                if (currentIndex < scale.length) {
+                    notes.push(scale[currentIndex]);
                 }
             }
-            
+
             return notes;
+        }
+
+        getAccidental(midi, key) {
+            // Determine if note needs accidental based on key signature
+            // This is simplified - in production would check key signature properly
+            const noteInOctave = midi % 12;
+            const blackKeys = [1, 3, 6, 8, 10]; // C#, D#, F#, G#, A#
+
+            if (blackKeys.includes(noteInOctave)) {
+                return '#'; // Could be 'b' depending on key
+            }
+
+            return null;
+        }
+
+        getDurationBeats(duration) {
+            const beatMap = {
+                'whole': 4,
+                'dotted-half': 3,
+                'half': 2,
+                'dotted-quarter': 1.5,
+                'quarter': 1,
+                'eighth': 0.5,
+                'sixteenth': 0.25
+            };
+
+            return beatMap[duration] || 1;
         }
         
         generateTriads() {
@@ -2904,52 +3048,71 @@
         renderNote(note) {
             const x = this.getNoteX(note);
             const y = this.getNoteY(note);
-            
+
             const ctx = this.ctx;
             ctx.save();
-            
-            // Draw note head
-            ctx.fillStyle = note.played ? '#4CAF50' : 
-                           note.missed ? '#F44336' : 
-                           note.highlighted ? '#C59D3A' : '#333';
-            
+
+            // Color based on note state
+            const noteColor = note.played ? '#4CAF50' :
+                             note.missed ? '#F44336' :
+                             note.highlighted ? '#C59D3A' : '#333';
+
+            ctx.fillStyle = noteColor;
+            ctx.strokeStyle = noteColor;
+
+            // Draw note head based on duration
+            const isOpenNote = note.duration === 'whole' || note.duration === 'half' || note.duration === 'dotted-half';
+
             ctx.beginPath();
             ctx.ellipse(x, y, 6, 5, -20 * Math.PI / 180, 0, 2 * Math.PI);
-            ctx.fill();
-            
-            // Draw stem if needed
-            if (note.duration !== 'whole') {
-                const stemHeight = 30;
-                const stemDirection = y < this.staffY + 24 ? 1 : -1;
-                
-                ctx.beginPath();
-                ctx.moveTo(x + (stemDirection > 0 ? 5 : -5), y);
-                ctx.lineTo(x + (stemDirection > 0 ? 5 : -5), y + (stemHeight * stemDirection));
+
+            if (isOpenNote) {
+                // Open note head for whole and half notes
                 ctx.lineWidth = 2;
                 ctx.stroke();
-                
+            } else {
+                // Filled note head for quarter and shorter
+                ctx.fill();
+            }
+
+            // Draw stem if needed (all notes except whole notes)
+            if (note.duration !== 'whole') {
+                const stemHeight = 35;
+                const stemDirection = y < this.staffY + 24 ? 1 : -1;
+                const stemX = x + (stemDirection > 0 ? 5.5 : -5.5);
+
+                ctx.beginPath();
+                ctx.moveTo(stemX, y);
+                ctx.lineTo(stemX, y + (stemHeight * stemDirection));
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
                 // Draw flags for eighth and sixteenth notes
                 if (note.duration === 'eighth' || note.duration === 'sixteenth') {
-                    this.drawFlags(x + (stemDirection > 0 ? 5 : -5), 
-                                  y + (stemHeight * stemDirection), 
-                                  stemDirection, 
-                                  note.duration);
+                    this.drawFlags(stemX, y + (stemHeight * stemDirection), stemDirection, note.duration);
                 }
             }
-            
+
+            // Draw dot for dotted notes
+            if (note.duration && note.duration.includes('dotted')) {
+                ctx.beginPath();
+                ctx.arc(x + 12, y, 2, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+
             // Draw ledger lines if needed
             this.drawLedgerLines(x, y);
-            
+
             // Draw accidentals
             if (note.accidental) {
                 this.drawAccidental(x - 15, y, note.accidental);
             }
-            
+
             // Draw note name if enabled
             if (this.noteNameSystem !== 'none') {
                 this.drawNoteName(x, y + 20, note);
             }
-            
+
             ctx.restore();
         }
         
