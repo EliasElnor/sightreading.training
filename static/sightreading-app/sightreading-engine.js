@@ -882,6 +882,10 @@
             const measureNumber = Math.floor(beatPosition / 4);
             const beatInMeasure = beatPosition % 4;
 
+            // Determine which staff based on MIDI pitch
+            // MIDI 57 (A3) is the crossover point
+            const staffType = playedMidi >= 57 ? 'treble' : 'bass';
+
             // Create note object
             const noteObj = {
                 midi: playedMidi,
@@ -889,16 +893,16 @@
                 measure: measureNumber,
                 beat: beatInMeasure,
                 played: true, // Mark as played (green)
+                staff: staffType,
                 timestamp: Date.now()
             };
 
             // Add to played notes array
             this.freeMode_playedNotes.push(noteObj);
-            this.notes.push(noteObj);
+            this.notes = [...this.freeMode_playedNotes]; // Show ALL played notes
 
-            // Auto-scroll if needed
+            // Auto-scroll if needed (keep last 16 notes visible)
             if (this.freeMode_playedNotes.length > 16) {
-                // Keep only last 16 notes visible
                 this.notes = this.freeMode_playedNotes.slice(-16);
                 // Renumber measures for the visible notes
                 this.notes.forEach((note, index) => {
@@ -1402,13 +1406,15 @@
 
             // Handle mode-specific setup
             if (mode === 'free') {
-                // Free mode: empty staff, notes appear as played
-                this.notes = [];
+                // Free mode: COMPLETELY EMPTY staff, notes appear as played
+                this.notes = []; // CLEAR all generated notes
                 this.freeMode_playedNotes = [];
                 this.isPlaying = false; // Free mode doesn't need "play" button
                 $('#srtPlayBtn').hide();
                 $('#srtPauseBtn').hide();
                 $('#srtStopBtn').hide();
+                // Force immediate render to show empty staff
+                this.render();
             } else {
                 // Wait/Scroll modes: generate notes
                 $('#srtPlayBtn').show();
@@ -2662,7 +2668,7 @@
                     } else {
                         // Chord/interval - multiple notes simultaneously
                         const chordNotes = this.generateChordNotes(currentMidi, scale, notesPerChord);
-                        chordNotes.forEach(midi => {
+                        chordNotes.forEach((midi, chordIndex) => {
                             notes.push({
                                 midi: midi,
                                 duration: duration,
@@ -2670,7 +2676,8 @@
                                 beat: beatPosition,
                                 staff: midi >= 60 ? 'treble' : 'bass',
                                 accidental: this.getAccidental(midi, keySignature),
-                                chord: true
+                                chord: true,
+                                chordOffset: chordIndex * 0.5 // Horizontal spacing for chord notes
                             });
                         });
 
@@ -3181,8 +3188,11 @@
             // Draw stem if needed (all notes except whole notes)
             if (note.duration !== 'whole') {
                 const stemHeight = 35;
+                // Stem direction: up if below middle line, down if above
                 const stemDirection = y < this.staffY + 24 ? 1 : -1;
-                const stemX = x + (stemDirection > 0 ? 5.5 : -5.5);
+
+                // CORRECTION: Stem on RIGHT for up-stems, LEFT for down-stems
+                const stemX = stemDirection > 0 ? x + 5.5 : x - 5.5;
 
                 ctx.beginPath();
                 ctx.moveTo(stemX, y);
@@ -3220,7 +3230,14 @@
         }
         
         getNoteX(note) {
-            return 200 + (note.measure * this.measureWidth) + (note.beat * (this.measureWidth / 4));
+            let baseX = 200 + (note.measure * this.measureWidth) + (note.beat * (this.measureWidth / 4));
+
+            // If note is part of a chord, offset horizontally to avoid overlap
+            if (note.chordOffset !== undefined) {
+                baseX += note.chordOffset * 10; // 10px spacing per note in chord
+            }
+
+            return baseX;
         }
         
         getNoteY(note) {
